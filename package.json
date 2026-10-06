@@ -1,0 +1,105 @@
+{
+  "name": "bitgrain-desktop",
+  "version": "0.1.0",
+  "description": "Bitgrain desktop, deterministic creative suite",
+  "main": "out/main/index.js",
+  "private": true,
+  "type": "module",
+  "author": "Bitgrain",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "start": "electron-vite preview",
+    "typecheck": "tsc -b --force",
+    "build": "npm run typecheck && electron-vite build",
+    "lint": "eslint .",
+    "build:native": "cd native/haptics && node-gyp rebuild --target=43.2.0 --dist-url=https://electronjs.org/headers",
+    "smoke": "electron scripts/smoke.mjs",
+    "render-check": "electron scripts/render-check.mjs",
+    "parallel-check": "electron scripts/parallel-check.mjs",
+    "tabs-check": "electron scripts/tabs-check.mjs",
+    "surfaces-check": "electron scripts/surfaces-check.mjs",
+    "video-check": "electron scripts/video-check.mjs",
+    "transition-check": "electron scripts/transition-check.mjs",
+    "persistence-check": "electron scripts/persistence-check.mjs",
+    "compute-bench": "node scripts/compute-bench.mjs",
+    "dmg-bg": "node scripts/make-dmg-bg.mjs",
+    "verify": "npm run build && npm run smoke && npm run render-check && npm run parallel-check && npm run tabs-check && npm run surfaces-check && npm run video-check && npm run transition-check && npm run persistence-check",
+    "package:mac": "npm run build && electron-builder --mac --dir",
+    "package:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac"
+  },
+  "build": {
+    "appId": "app.bitgrain.desktop",
+    "productName": "Bitgrain",
+    "icon": "src/renderer/public/bitgrainlogo.png",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**",
+      "native/haptics/build/Release/haptics.node",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "native/haptics/build/Release/haptics.node"
+    ],
+    "mac": {
+      "category": "public.app-category.graphics-design",
+      "icon": "build/icon.png",
+      "identity": null,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": "arm64"
+        }
+      ]
+    },
+    "win": {
+      "icon": "src/renderer/public/bitgrainlogo.png"
+    },
+    "linux": {
+      "icon": "src/renderer/public/bitgrainlogo.png"
+    },
+    "dmg": {
+      "background": "build/dmg-background.tiff",
+      "iconSize": 120,
+      "window": {
+        "width": 661,
+        "height": 409
+      },
+      "contents": [
+        { "x": 175, "y": 168, "type": "file" },
+        { "x": 486, "y": 168, "type": "link", "path": "/Applications" }
+      ]
+    }
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "heic2any": "^0.0.4",
+    "jspdf": "^4.2.1",
+    "libraw-wasm": "^1.1.2",
+    "lucide-react": "^1.8.0",
+    "mp4-muxer": "^5.2.2",
+    "pako": "^3.0.1",
+    "polygon-clipping": "^0.15.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.1",
+    "utif": "^3.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.12.0",
+    "@types/pako": "^2.0.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "node-gyp": "^11.0.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.6"
+  }
+}

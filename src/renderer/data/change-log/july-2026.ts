@@ -1,0 +1,88 @@
+import type { ChangeLogEntry } from "./types";
+
+export const JULY_2026_ENTRIES: ChangeLogEntry[] = [
+  {
+    version: '0.125.0',
+    date: '2026-07-27',
+    commit: '6061062',
+    title: 'Adjustment layers in Studio',
+    description: 'Studio now has adjustment layers. Instead of applying an effect to a single image, drop an adjustment layer into the stack and it applies its effect to everything below it, inside its box. Move or resize the box to affect just part of the composition, or leave it covering the whole page. It carries the full set of bitgrain effects plus image filters, updates live on the canvas as you work, and animates like any other layer.',
+    items: [
+      'Applies bitgrain effects and image filters to everything beneath it, without altering those layers',
+      'Resize the box to affect a region, or keep it over the whole page',
+      'Live preview on the canvas, including while you drag the layers underneath it',
+      'Renders the same everywhere, in export, present, and animation',
+    ],
+    type: 'feature',
+  },
+  {
+    version: '0.124.0',
+    date: '2026-07-27',
+    commit: '6061062',
+    title: 'Animate effect values',
+    description: 'You can now keyframe effect settings over time. Change a halftone cell size or a dither amount on a later frame and it animates from the previous one. The effect panel tells you when your edits are keyframing the current frame versus changing the base, and moving a layer no longer wipes an effect keyframe you already set on that frame.',
+    items: [
+      'Keyframe bitgrain effect and filter values across animation frames',
+      'The effect panel shows when you are on the base frame versus keyframing a later one',
+      'Dragging or resizing a layer no longer clears effect keyframes on that frame',
+    ],
+    type: 'feature',
+  },
+  {
+    version: '0.123.0',
+    date: '2026-07-27',
+    commit: '6061062',
+    title: 'Effect controls open all the way up',
+    description: 'The bitgrain effect sliders were holding back their full range. Halftone and pop art cells now go down to a single pixel, and spacing, posterize levels, folds, scratches, contrast, and misprint shift all reach much higher. Where a value was capped for no real reason, that cap is gone, so you can push each effect as far as it will go. The only limits left are the ones that keep an effect from breaking.',
+    items: [
+      'Halftone cell goes down to 1px instead of stopping at 3',
+      'Wider ranges across spacing, posterize levels, folds, dust, contrast, and misprint shift',
+      'Only the limits that keep an effect stable are still in place',
+    ],
+    type: 'improvement',
+  },
+  {
+    version: '0.122.0',
+    date: '2026-07-27',
+    commit: '6061062',
+    title: 'A quicker way to bring images in',
+    description: 'Adding an image was tucked away in the floating toolbar, so it now has a clear home in the File menu too. Once an image is placed, you can match the page size to it in one click from the image panel, instead of resizing the page by hand.',
+    items: [
+      'Import image now lives in the File menu, not only the bottom toolbar',
+      'Match the page size to a placed image in one click',
+    ],
+    type: 'improvement',
+  },
+  {
+    version: '0.121.0',
+    date: '2026-07-23',
+    commit: 'ac8b8ce',
+    title: 'Report bugs and request features in app',
+    description: 'There is now a proper ticketing system. Report a bug or request a feature straight from the app, follow it from a public support page, and see your tickets in your account. It is separate from the feedback prompts, so a real issue does not get lost.',
+    items: [
+      'Raise a bug or feature ticket from inside the app',
+      'A public support page and an account section to track your tickets',
+    ],
+    type: 'feature',
+  },
+  {
+    version: '0.120.0',
+    date: '2026-07-22',
+    commit: '2ef01ce',
+    title: 'Refreshed landing and navigation',
+    description: 'The landing pages and navigation had a visual pass for a cleaner, more consistent first impression, with tidier menus and smoother movement between sections.',
+    type: 'style',
+  },
+  {
+    version: '0.119.0',
+    date: '2026-07-18',
+    commit: 'eca63fd',
+    title: 'Place your artwork on a photo',
+    description: 'The new mockup tool drops your design onto a real photo, so you can see it as a poster on a wall, a print in a room, or a label on a product. Pick a scene, position your artwork, and export the composed shot. A pass on faint lines and edge clipping landed alongside it for cleaner results.',
+    items: [
+      'Composite your design onto a photo scene as a mockup',
+      'Position the artwork and export the finished shot',
+    ],
+    type: 'feature',
+  },
+];

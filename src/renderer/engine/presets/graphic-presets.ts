@@ -1,0 +1,55 @@
+import type { Preset } from "./types";
+
+export const GRAPHIC_PRESETS: Preset[] = [
+  {
+    name: "Posterize Max",
+    tag: "▲▲▲",
+    config: {
+      modes: ["dither"],
+      ditherMethod: "threshold",
+      ditherFactor: 1.2,
+      palette: null,
+      resolution: 2.0,
+      contrast: 2.0,
+      brightness: 1.0,
+      saturation: 1.5,
+      grain: 0,
+      hue: 0,
+      isColor: true,
+    },
+  },
+  {
+    name: "Ink Stamp",
+    tag: "███",
+    config: {
+      modes: ["dither"],
+      ditherMethod: "bayer-2",
+      ditherFactor: 1.1,
+      palette: null,
+      resolution: 1.5,
+      contrast: 2.0,
+      brightness: 0.9,
+      saturation: 0.0,
+      grain: 0.03,
+      hue: 0,
+      isColor: false,
+    },
+  },
+  {
+    name: "Silhouette",
+    tag: "◼◼◼",
+    config: {
+      modes: ["dither"],
+      ditherMethod: "threshold",
+      ditherFactor: 1.2,
+      palette: null,
+      resolution: 2.0,
+      contrast: 2.0,
+      brightness: 1.0,
+      saturation: 0.0,
+      grain: 0,
+      hue: 0,
+      isColor: false,
+    },
+  },
+];

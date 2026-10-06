@@ -1,0 +1,55 @@
+import type { Preset } from "./types";
+
+export const SOFT_PRESETS: Preset[] = [
+  {
+    name: "Pastel Dream",
+    tag: "✿✿✿",
+    config: {
+      modes: ["dither"],
+      ditherMethod: "blue-noise",
+      ditherFactor: 0.88,
+      palette: null,
+      resolution: 2.0,
+      contrast: 1.1,
+      brightness: 1.15,
+      saturation: 1.6,
+      grain: 0.03,
+      hue: 280,
+      isColor: true,
+    },
+  },
+  {
+    name: "Soft Film",
+    tag: "···",
+    config: {
+      modes: ["dither"],
+      ditherMethod: "sierra-lite",
+      ditherFactor: 0.9,
+      palette: null,
+      resolution: 2.0,
+      contrast: 1.1,
+      brightness: 1.05,
+      saturation: 0.9,
+      grain: 0.08,
+      hue: 5,
+      isColor: true,
+    },
+  },
+  {
+    name: "Warm Fade",
+    tag: "☼☼☼",
+    config: {
+      modes: ["dither"],
+      ditherMethod: "atkinson",
+      ditherFactor: 0.95,
+      palette: null,
+      resolution: 2.0,
+      contrast: 1.2,
+      brightness: 1.1,
+      saturation: 1.4,
+      grain: 0.04,
+      hue: 30,
+      isColor: true,
+    },
+  },
+];

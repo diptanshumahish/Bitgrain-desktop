@@ -1,0 +1,2 @@
+export const LAYER_EFFECT_WORKING_MAX = 600;
+export const ADJUSTMENT_WORKING_MAX = 1000;

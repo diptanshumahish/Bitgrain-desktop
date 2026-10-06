@@ -1,0 +1,55 @@
+import type { Preset } from "./types";
+
+export const TEXTURE_PRESETS: Preset[] = [
+  {
+    name: "Acid Wash",
+    tag: "~≀~≀",
+    config: {
+      modes: ["dither"],
+      ditherMethod: "bayer-4",
+      ditherFactor: 1.05,
+      palette: null,
+      resolution: 2.0,
+      contrast: 1.6,
+      brightness: 1.02,
+      saturation: 0.0,
+      grain: 0.03,
+      hue: 0,
+      isColor: false,
+    },
+  },
+  {
+    name: "Silk",
+    tag: "≈≋≈",
+    config: {
+      modes: ["dither"],
+      ditherMethod: "sierra-lite",
+      ditherFactor: 0.9,
+      palette: null,
+      resolution: 2.0,
+      contrast: 1.35,
+      brightness: 1.04,
+      saturation: 1.7,
+      grain: 0,
+      hue: 0,
+      isColor: true,
+    },
+  },
+  {
+    name: "Blueprint",
+    tag: "┼┤├┼",
+    config: {
+      modes: ["dither"],
+      ditherMethod: "bayer-4",
+      ditherFactor: 1.0,
+      palette: null,
+      resolution: 2.0,
+      contrast: 1.8,
+      brightness: 1.1,
+      saturation: 1.5,
+      grain: 0,
+      hue: 210,
+      isColor: true,
+    },
+  },
+];
