@@ -38,6 +38,9 @@ const get6 = (color: string): string => {
   return clean.length >= HEX6_LENGTH ? clean.slice(0, HEX6_LENGTH) : clean;
 };
 
+const colorLabel = (color: string): string =>
+  color === "transparent" ? "None" : get6(color).replace("#", "");
+
 const parseAlpha = (color: string): number => {
   const clean = color.startsWith("#") ? color : `#${color}`;
   if (clean.length === HEX8_LENGTH) {
@@ -413,7 +416,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
         </div>
         <span className="flex-1 text-[11.5px] text-[var(--s-text)] truncate flex items-center gap-1">
           {boundVar && <span className="w-1 h-1 rounded-full bg-[var(--s-accent)] shrink-0" />}
-          {boundVar ? boundVar.name : get6(color).replace("#", "")}
+          {boundVar ? boundVar.name : colorLabel(color)}
         </span>
         {!boundVar && alpha < 100 && (
           <span className="text-[10px]   text-[var(--s-text-subtle)]">

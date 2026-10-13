@@ -18,6 +18,7 @@ import type {
 import { DEFAULT_GRADIENT_TEXT } from "../data/studioTypes";
 import { defaultParamsFor } from "./bitgrain-effect-core";
 import { inkStrokeToPath } from "./ink-stroke";
+import { textBlockHeight } from "./text-block-height";
 import type { HandleDir } from "../components/studio/layers/SelectionHandles";
 
 type TextMetrics = Pick<
@@ -38,8 +39,7 @@ const getMeasureCtx = (): CanvasRenderingContext2D | null => {
 // measured with the layer's actual font.
 export const fitTextBox = (layer: TextMetrics): { width: number; height: number } => {
   const lines = (layer.content || " ").replaceAll("\\n", "\n").split("\n");
-  const lineCount = Math.max(1, lines.length);
-  const height = Math.ceil(lineCount * layer.fontSize * layer.lineHeight);
+  const height = textBlockHeight(lines.length, layer.fontSize, layer.lineHeight);
 
   let maxWidth = 0;
   const ctx = getMeasureCtx();
@@ -68,22 +68,26 @@ const contrastingTextColor = (background: string): string => {
   return luminance > 0.55 ? "#1a1a1a" : "#ffffff";
 };
 
+export const NEW_TEXT_CONTENT = "New text";
+const NEW_TEXT_HEIGHT_RATIO = 0.08;
+const MIN_NEW_TEXT_SIZE = 24;
+
 export const makeTextLayer = (
   w: number,
   h: number,
   index: number,
   background?: string,
 ): TextLayer => {
-  const fontSize = Math.max(24, Math.round(Math.max(w, h) / 30 / 8) * 8);
+  const fontSize = Math.max(MIN_NEW_TEXT_SIZE, Math.round(h * NEW_TEXT_HEIGHT_RATIO));
   const fit = fitTextBox({
-    content: "New text", fontSize, fontFamily: "'Akasha', sans-serif",
+    content: NEW_TEXT_CONTENT, fontSize, fontFamily: "'Akasha', sans-serif",
     fontWeight: "700", fontStyle: "regular", lineHeight: 1.2, letterSpacing: 0,
   });
   return {
   id: `text-${Date.now()}-${index}`,
   type: "text",
   name: "Text",
-  content: "New text",
+  content: NEW_TEXT_CONTENT,
   x: Math.round(w / 2 - fit.width / 2),
   y: Math.round(h / 2 - fit.height / 2),
   width: fit.width,

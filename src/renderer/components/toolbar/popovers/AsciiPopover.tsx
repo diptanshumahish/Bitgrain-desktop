@@ -41,7 +41,7 @@ const TONES: { label: string; value: AsciiTone }[] = [
 ];
 
 const optionClass = (active: boolean): string =>
-  `px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+  `px-2 py-1.5 rounded-lg text-[12px] font-medium transition-all ${
     active
       ? "bg-[var(--s-accent)] text-[var(--s-accent-text)]"
       : "text-[var(--s-text-muted)] hover:bg-[var(--s-bg-input-hover)] hover:text-[var(--s-text)]"
@@ -87,9 +87,9 @@ export const AsciiPopover: React.FC<AsciiPopoverProps> = ({
         onBlur={onStateChangeFinished}
         spellCheck={false}
         placeholder="Custom characters"
-        className="mt-1.5 w-full font-mono text-[10px] bg-[var(--s-bg-input)] text-[var(--s-text)] border border-[var(--s-border)] rounded-lg px-2 py-1.5 outline-none focus:border-[var(--s-accent)] transition-colors"
+        className="mt-1.5 w-full font-mono text-[12px] bg-[var(--s-bg-input)] text-[var(--s-text)] border border-[var(--s-border)] rounded-lg px-2 py-1.5 outline-none focus:border-[var(--s-accent)] transition-colors"
       />
-      <p className="text-[9px] text-[var(--s-text-subtle)] mt-1 px-0.5">
+      <p className="text-[12px] text-[var(--s-text-subtle)] mt-1 px-0.5">
         Sparse to dense, left to right.
       </p>
     </PopoverSection>
@@ -116,6 +116,7 @@ export const AsciiPopover: React.FC<AsciiPopoverProps> = ({
     <PopoverSection title="Detail">
       <div className="grid grid-cols-[1fr_28px] items-center gap-x-2 px-1">
         <Slider
+          label="Detail"
           min={0.4}
           max={2.5}
           step={0.1}
@@ -150,6 +151,7 @@ export const AsciiPopover: React.FC<AsciiPopoverProps> = ({
       {edges && (
         <div className="grid grid-cols-[1fr_28px] items-center gap-x-2 px-1 mt-1.5">
           <Slider
+            label="Edge threshold"
             min={0}
             max={1}
             step={0.05}

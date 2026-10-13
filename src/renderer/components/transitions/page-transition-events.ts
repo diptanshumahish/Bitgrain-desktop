@@ -1,4 +1,5 @@
 import type { MouseEvent } from "react";
+import { preloadRoute } from "./route-preloaders";
 
 export const PAGE_TRANSITION_EVENT = "bitgrain:page-transition";
 
@@ -20,18 +21,15 @@ export const triggerPageTransition = (to: string, rect: PageTransitionRect): voi
   );
 };
 
-export const createTransitionClickHandler =
+export const createPreloadHandler =
   (to: string) =>
-  (event: MouseEvent): void => {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
-      return;
-    }
-    event.preventDefault();
-    const bounds = event.currentTarget.getBoundingClientRect();
-    triggerPageTransition(to, {
-      top: bounds.top,
-      left: bounds.left,
-      width: bounds.width,
-      height: bounds.height,
-    });
+  (): void => {
+    preloadRoute(to);
   };
+
+// Desktop: no PageTransitionPortal is mounted to finish the web's animated route
+// change, so the click is left alone and the Link navigates normally (the home
+// surface turns editor paths into new tabs).
+export const createTransitionClickHandler =
+  (_to: string) =>
+  (_event: MouseEvent): void => {};

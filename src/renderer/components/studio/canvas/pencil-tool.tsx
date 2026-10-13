@@ -25,6 +25,9 @@ interface PencilToolProps {
   isSpacePressed: () => boolean;
   settings: VectorSettings;
   inkMode: boolean;
+  isActivePage: boolean;
+  flushRef: React.MutableRefObject<(() => void) | null>;
+  onActivatePage: () => void;
   onStrokeFinished: (anchors: ReturnType<typeof pointsToAnchors>) => void;
   onInkFinish: (strokes: InkPoint[][]) => void;
 }
@@ -37,6 +40,9 @@ export const PencilTool: React.FC<PencilToolProps> = ({
   isSpacePressed,
   settings,
   inkMode,
+  isActivePage,
+  flushRef,
+  onActivatePage,
   onStrokeFinished,
   onInkFinish,
 }) => {
@@ -58,6 +64,20 @@ export const PencilTool: React.FC<PencilToolProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (!isActivePage) return;
+    const flush = () => {
+      if (sessionStrokesRef.current.length === 0) return;
+      onInkFinishRef.current(sessionStrokesRef.current);
+      sessionStrokesRef.current = [];
+      setSessionStrokes([]);
+    };
+    flushRef.current = flush;
+    return () => {
+      if (flushRef.current === flush) flushRef.current = null;
+    };
+  }, [isActivePage, flushRef]);
+
   const toCanvas = useCallback((clientX: number, clientY: number, pressure: number): InkPoint => {
     const rect = overlayRef.current!.getBoundingClientRect();
     return { x: (clientX - rect.left) / zoom, y: (clientY - rect.top) / zoom, pressure };
@@ -70,13 +90,14 @@ export const PencilTool: React.FC<PencilToolProps> = ({
     if (activePointerIdRef.current !== null) return;
     e.stopPropagation();
     e.preventDefault();
+    if (!isActivePage) onActivatePage();
     overlayRef.current!.setPointerCapture(e.pointerId);
     activePointerIdRef.current = e.pointerId;
     isDrawingRef.current = true;
     const pt = toCanvas(e.clientX, e.clientY, pressureOf(e));
     pointsRef.current = [pt];
     setDisplayPoints([pt]);
-  }, [active, isSpacePressed, toCanvas]);
+  }, [active, isSpacePressed, isActivePage, onActivatePage, toCanvas]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDrawingRef.current || e.pointerId !== activePointerIdRef.current) return;

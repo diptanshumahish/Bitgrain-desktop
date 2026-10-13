@@ -1,12 +1,15 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { Layer } from "../../data/studioTypes";
+import { trackEvent } from "../../lib/tracker";
+import { emitUndoToast } from "../../components/portal/undo-toast/undo-toast-events";
 
 interface StudioPageHandlersConfig {
   pushHistory: () => void;
+  undo: () => void;
   pagesApi: {
-    addPage: () => void;
+    addPage: () => string;
     addPageWithSize: (width: number, height: number, name?: string, x?: number, y?: number) => string;
-    duplicateActivePage: () => string | null;
+    duplicatePageById: (pageId: string) => string | null;
     deletePage: (id: string) => void;
   };
   setActivePageId: (id: string) => void;
@@ -32,10 +35,15 @@ interface StudioPageHandlersConfig {
 
 export const useStudioPageHandlers = (config: StudioPageHandlersConfig) => {
   const {
-    pushHistory, pagesApi, setActivePageId, setSelectedIds, setSelectedFramePageId,
+    pushHistory, undo, pagesApi, setActivePageId, setSelectedIds, setSelectedFramePageId,
     setEditingId, setVectorEditingId, setLayersForPage, setPagePosition,
     setPageBackgroundForPage, setPageSize, setPageTransform, renamePage, scaleContents,
   } = config;
+
+  const undoRef = useRef(undo);
+  useEffect(() => {
+    undoRef.current = undo;
+  });
 
   const handleSelectPage = useCallback((id: string) => {
     setSelectedIds([]);
@@ -55,8 +63,9 @@ export const useStudioPageHandlers = (config: StudioPageHandlersConfig) => {
 
   const handleAddPage = useCallback(() => {
     pushHistory();
-    pagesApi.addPage();
-  }, [pushHistory, pagesApi]);
+    setActivePageId(pagesApi.addPage());
+    trackEvent("studio", "page_added");
+  }, [pushHistory, pagesApi, setActivePageId]);
 
   const handleAddSizedPage = useCallback((width: number, height: number, name?: string) => {
     pushHistory();
@@ -65,15 +74,26 @@ export const useStudioPageHandlers = (config: StudioPageHandlersConfig) => {
     setSelectedIds([]);
   }, [pushHistory, pagesApi, setActivePageId, setSelectedIds]);
 
-  const handleDuplicatePage = useCallback(() => {
+  const handleDuplicatePage = useCallback((pageId: string) => {
     pushHistory();
-    const newId = pagesApi.duplicateActivePage();
+    const newId = pagesApi.duplicatePageById(pageId);
     if (newId) setActivePageId(newId);
+    trackEvent("studio", "page_duplicated", { details: { source: "panel" } });
   }, [pushHistory, pagesApi, setActivePageId]);
 
   const handleDeletePage = useCallback((id: string) => {
     pushHistory();
     pagesApi.deletePage(id);
+    trackEvent("studio", "page_deleted");
+    emitUndoToast({
+      title: "Page deleted",
+      detail: "Changed your mind? You can bring it back.",
+      onUndo: () => {
+        trackEvent("studio", "page_delete_undone");
+        undoRef.current();
+      },
+      onExpire: () => undefined,
+    });
   }, [pushHistory, pagesApi]);
 
   const handleRenamePage = useCallback((id: string, name: string) => {

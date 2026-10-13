@@ -10,6 +10,7 @@ import {
   applyStyleToRange,
   recolorSubset,
 } from "./rich-text-apply";
+import { offsetsToRange, rangeToOffsets, type RangeOffsets } from "./range-offsets";
 
 export const selectionStyleSignal = signal<ResolvedTextStyle | null>(null);
 export const highlightRectsSignal = signal<DOMRect[] | null>(null);
@@ -22,6 +23,7 @@ interface ActiveEditor {
 
 let active: ActiveEditor | null = null;
 let savedRange: Range | null = null;
+let previewSnapshot: { html: string; offsets: RangeOffsets } | null = null;
 
 export const registerEditor = (editor: ActiveEditor): void => {
   active = editor;
@@ -30,6 +32,7 @@ export const registerEditor = (editor: ActiveEditor): void => {
 
 export const unregisterEditor = (editorEl: HTMLElement): void => {
   if (active?.editorEl !== editorEl) return;
+  endSelectionPreview();
   active = null;
   savedRange = null;
   selectionStyleSignal.value = null;
@@ -96,7 +99,27 @@ const applyPending = (prop: RichStyleProp, value: string, caret: Range): void =>
   refreshSelection();
 };
 
+export function endSelectionPreview(): void {
+  if (!active || !previewSnapshot) return;
+  active.editorEl.innerHTML = previewSnapshot.html;
+  savedRange = offsetsToRange(active.editorEl, previewSnapshot.offsets);
+  previewSnapshot = null;
+  if (!isEditorFocused()) showSavedHighlight();
+}
+
+export const previewOnSelection = (prop: RichStyleProp, value: string): void => {
+  endSelectionPreview();
+  if (!active || !savedRange || savedRange.collapsed) return;
+  previewSnapshot = {
+    html: active.editorEl.innerHTML,
+    offsets: rangeToOffsets(active.editorEl, savedRange),
+  };
+  const previewed = applyStyleToRange(active.editorEl, savedRange.cloneRange(), prop, value);
+  highlightRectsSignal.value = previewed ? Array.from(previewed.getClientRects()) : null;
+};
+
 export const applyToSelection = (prop: RichStyleProp, value: string): void => {
+  endSelectionPreview();
   if (!active) return;
   const focused = liveRange();
   const range = focused ?? savedRange;

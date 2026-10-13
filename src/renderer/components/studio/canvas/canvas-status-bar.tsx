@@ -1,6 +1,10 @@
 import React from "react";
 import { Minus, Plus, Maximize2, Keyboard, Film } from "lucide-react";
 import { Tooltip } from "../ui/Tooltip";
+import { OutputRatingButtons } from "../../../modules/output-rating/output-rating-buttons";
+import { buildStudioRatingContext } from "../../../modules/output-rating/studio-rating-context";
+import { emitModal } from "../../../lib/event-bus";
+import { trackEvent } from "../../../lib/tracker";
 
 const ZOOM_MIN = 0.1;
 const ZOOM_MAX = 4;
@@ -15,6 +19,11 @@ interface CanvasStatusBarProps {
   onAnimate?: () => void;
   animationActive?: boolean;
 }
+
+const openShortcutsSheet = (): void => {
+  trackEvent("studio", "shortcuts_opened", { details: { source: "status_bar" } });
+  emitModal({ type: "keyboard-shortcuts" });
+};
 
 const stepZoom = (current: number, direction: 1 | -1): number => {
   const next = current + direction * ZOOM_STEP;
@@ -58,6 +67,10 @@ export const CanvasStatusBar = ({
 
       <div className="flex-1" />
 
+      <OutputRatingButtons surface="studio" getContext={buildStudioRatingContext} />
+
+      <div className="w-px h-3.5 bg-[var(--s-border)]" />
+
       <div className="flex items-center gap-0.5 bg-[var(--s-bg-input)]/60 rounded-md p-0.5">
         <Tooltip content="Zoom out">
           <button
@@ -80,10 +93,10 @@ export const CanvasStatusBar = ({
             <Plus size={11} strokeWidth={2} />
           </button>
         </Tooltip>
-        <Tooltip content="Fit canvas">
+        <Tooltip content="Zoom to fit">
           <button
             onClick={onZoomFit}
-            aria-label="Fit canvas"
+            aria-label="Zoom to fit"
             className="w-6 h-6 flex items-center justify-center rounded text-[var(--s-text-muted)] hover:bg-[var(--s-bg-panel)] hover:text-[var(--s-text)] transition-colors active:scale-95"
           >
             <Maximize2 size={10} strokeWidth={2} />
@@ -91,8 +104,10 @@ export const CanvasStatusBar = ({
         </Tooltip>
       </div>
 
-      <Tooltip content="⌘ + scroll to zoom, space + drag to pan">
+      <Tooltip content="Keyboard shortcuts">
         <button
+          type="button"
+          onClick={openShortcutsSheet}
           aria-label="Keyboard shortcuts"
           className="w-6 h-6 flex items-center justify-center rounded text-[var(--s-text-subtle)] hover:bg-[var(--s-bg-input)] hover:text-[var(--s-text-muted)] transition-colors"
         >

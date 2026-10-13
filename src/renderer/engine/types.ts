@@ -5,7 +5,7 @@ export type TransformMode =
   | 'halftone' | 'scanlines' | 'crosshatch'
   | 'popart' | 'photocopy' | 'misprint' | 'fold' | 'dust'
   | 'colorgrade' | 'duotone' | 'vignette' | 'posterize' | 'sharpen' | 'colorwash'
-  | 'inkwash' | 'manga';
+  | 'inkwash' | 'manga' | 'original';
 
 export type DitherMethod = 
   | 'threshold' | 'floyd-steinberg' | 'atkinson' | 'random'
@@ -24,6 +24,10 @@ export type AsciiTone = "dark" | "light";
 
 export interface TransformContext {
   data: Float32Array;
+  grade?: import("../modules/grading/engine/grade-types").ColorGrade;
+  masks?: import("../modules/grading/mask/mask-types").WorkerMaskLayer[];
+  brushAlphas?: Record<string, Float32Array>;
+  overlayMaskId?: string | null;
   width: number;
   height: number;
   contrast: number;
@@ -33,6 +37,8 @@ export interface TransformContext {
   asciiCharset?: string;
   asciiEdges?: boolean;
   asciiEdgeThreshold?: number;
+  asciiGridCols?: number;
+  asciiGridRows?: number;
   contourLevels?: number;
   contourFill?: boolean;
   ditherMethod?: DitherMethod;
@@ -47,9 +53,12 @@ export interface TransformContext {
   hazeWarmth?: number;
   // Halftone-specific
   halftoneCell?: number;
+  halftoneLines?: number;
   halftoneAngle?: number;
   halftoneStyle?: 'mono' | 'color' | 'cmyk';
-  halftoneShape?: 'round' | 'square';
+  halftoneShape?: import('./plugins/halftone/halftone-defaults').HalftoneShape;
+  halftoneGrit?: number;
+  halftoneSupersample?: boolean;
   halftoneInvert?: boolean;
   halftoneScale?: number;
   halftoneIntensity?: number;
@@ -84,6 +93,7 @@ export interface TransformContext {
   vignetteRadius?: number;
   vignetteSoftness?: number;
   posterizeLevels?: number;
+  paperColor?: [number, number, number];
   sharpenAmount?: number;
   washColor?: [number, number, number];
   washIntensity?: number;
@@ -119,6 +129,9 @@ export interface TransformationResult {
   charData?: string[];
   colorData?: Uint8ClampedArray;
   workingData?: Float32Array;
+  baseData?: Uint8ClampedArray;
+  effectAlpha?: Uint8ClampedArray;
+  overlayAlpha?: Uint8ClampedArray;
   gridWidth?: number;
   gridHeight?: number;
 }

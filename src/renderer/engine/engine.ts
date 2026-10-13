@@ -9,6 +9,7 @@ import { GrainPlugin } from './plugins/creative';
 import { LUTPlugin } from './plugins/lut';
 import { HazeBloomPlugin } from './plugins/haze-bloom';
 import { HalftonePlugin } from './plugins/halftone';
+import { OriginalPlugin } from './plugins/passthrough/original';
 import { ScanlinesPlugin } from './plugins/scanlines';
 import { CrosshatchPlugin } from './plugins/crosshatch';
 import { InkWashPlugin } from './plugins/inkwash';
@@ -25,6 +26,8 @@ import {
   ColorWashPlugin,
 } from './plugins/grade';
 import { getNearestColor } from './utils/color';
+import { applyGrade } from '../modules/grading/engine/apply-grade';
+import { runLocalMasks } from '../modules/grading/mask/mask-outputs';
 
 // ── HSL helpers for hue rotation ──
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
@@ -89,6 +92,7 @@ class PluginRegistry {
     this.register(PosterizePlugin);
     this.register(SharpenPlugin);
     this.register(ColorWashPlugin);
+    this.register(OriginalPlugin);
   }
 
   register(plugin: ImagePlugin) {
@@ -149,6 +153,9 @@ export const runTransform = (mode: TransformMode | TransformMode[], ctx: Transfo
     }
   }
 
+  applyGrade(preprocessed, ctx.grade);
+  const maskOutputs = runLocalMasks(preprocessed, ctx);
+
   // Pass preprocessed data with adjustments neutralised (plugins shouldn't re-apply)
   let currentCtx: TransformContext = {
     ...ctx,
@@ -189,5 +196,5 @@ export const runTransform = (mode: TransformMode | TransformMode[], ctx: Transfo
     }
   }
 
-  return lastResult;
+  return { ...lastResult, ...maskOutputs };
 };

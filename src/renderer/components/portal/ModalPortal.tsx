@@ -5,7 +5,6 @@ import type { ModalEvent } from "../../lib/event-bus";
 import { CropModal } from "../modals/CropModal";
 import { ResizeModal } from "../modals/ResizeModal";
 import { RisoExportModal } from "../modals/RisoExportModal";
-import { SelectiveEffectModal } from "../modals/SelectiveEffectModal";
 import { ColorStudioModal } from "../modals/ColorStudioModal";
 import { ConfirmModal } from "../modals/ConfirmModal";
 import { PromptModal } from "../modals/PromptModal";
@@ -15,12 +14,19 @@ import { PresentationModal } from "../modals/PresentationModal";
 import { PatternModal } from "../modals/pattern/PatternModal";
 import { SmartObjectModal } from "../modals/smart-object/SmartObjectModal";
 import { BatchProcessor } from "../modals/batch/BatchProcessor";
+import { KeyboardShortcutsModal } from "../modals/studio-dialog/KeyboardShortcutsModal";
+import { NewDesignModal } from "../modals/studio-dialog/NewDesignModal";
+import { MaskAreaModal } from "../../modules/grading/mask-ui/area-modal/MaskAreaModal";
 import { HeicToast } from "../HeicToast";
 
+const HEIC_DONE_LINGER_MS = 900;
+
 // Desktop modal host. It wires the feature modals the editors emit (crop,
-// selective effect, colour studio, riso export, resize, confirm, prompt) plus
+// mask area, colour studio, riso export, resize, confirm, prompt, shortcuts,
+// new design) plus
 // the HEIC conversion toast. The web build's payment and auth modals
-// (studio-payment, login, settings, paypal, ticket, …) have no desktop meaning
+// (studio-payment, login, settings, free-access, upgrade-prompt,
+// post-export-upgrade, ticket, …) have no desktop meaning
 // and are simply not rendered — offline, deterministic, no accounts.
 type ActiveModal = Exclude<ModalEvent, { type: "heic-status" }> | null;
 
@@ -65,9 +71,15 @@ export const ModalPortal: React.FC = () => {
   useEffect(() => {
     return onModal((event) => {
       if (event.type === "heic-status") {
-        setHeicStatus(event.status);
         if (event.format) setHeicFormat(event.format);
-        if (event.status === "done") setTimeout(() => setHeicStatus(null), 900);
+        if (event.status === "failed") {
+          setHeicStatus(null);
+          return;
+        }
+        setHeicStatus(event.status);
+        if (event.status === "done") {
+          setTimeout(() => setHeicStatus((current) => (current === "done" ? null : current)), HEIC_DONE_LINGER_MS);
+        }
         return;
       }
       if (event.type === "add-image") {
@@ -87,7 +99,9 @@ export const ModalPortal: React.FC = () => {
     <>
       {active?.type === "crop" && <CropModal onClose={close} />}
       {active?.type === "riso-export" && <RisoExportModal onClose={close} />}
-      {active?.type === "selective-effect" && <SelectiveEffectModal onClose={close} />}
+      {active?.type === "mask-area" && (
+        <MaskAreaModal source={active.source} area={active.area} onApply={active.onApply} onClose={close} />
+      )}
       {active?.type === "color-studio" && <ColorStudioModal onClose={close} />}
       {active?.type === "resize" && (
         <ResizeModal
@@ -106,6 +120,7 @@ export const ModalPortal: React.FC = () => {
           confirmLabel={active.confirmLabel}
           cancelLabel={active.cancelLabel}
           danger={active.danger}
+          safeDefault={active.safeDefault}
           onClose={close}
         />
       )}
@@ -113,6 +128,7 @@ export const ModalPortal: React.FC = () => {
         <PromptModal
           title={active.title}
           label={active.label}
+          notice={active.notice}
           defaultValue={active.defaultValue}
           placeholder={active.placeholder}
           confirmLabel={active.confirmLabel}
@@ -123,6 +139,8 @@ export const ModalPortal: React.FC = () => {
       {active?.type === "animate" && <AnimateModal onClose={close} />}
       {active?.type === "changelog" && <ChangelogModal onClose={close} />}
       {active?.type === "batch" && <BatchProcessor onClose={close} />}
+      {active?.type === "keyboard-shortcuts" && <KeyboardShortcutsModal onClose={close} />}
+      {active?.type === "new-design" && <NewDesignModal onCreate={active.onCreate} onClose={close} />}
       {active?.type === "pattern" && (
         <PatternModal
           canvasWidth={active.canvasWidth}

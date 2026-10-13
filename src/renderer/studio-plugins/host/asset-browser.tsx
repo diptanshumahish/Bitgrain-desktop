@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import type { Plugin, PluginAsset } from "./types";
 import { resolveAssetUrl, searchPluginAssets } from "./api";
 import { PLUGIN_DRAG_MIME, emitInsertImage } from "./plugin-bus";
+import { trackEvent } from "../../lib/tracker";
 
 const SEARCH_DEBOUNCE_MS = 200;
 const PAGE_SIZE = 60;
@@ -91,7 +92,13 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({ plugin }) => {
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-2">
-        {items.length === 0 && !loading ? (
+        {items.length === 0 && loading ? (
+          <div className="grid gap-2" style={gridStyle} aria-label="Loading assets">
+            {SKELETON_KEYS.map((key) => (
+              <div key={key} className="aspect-square rounded bg-[var(--s-bg-input)] animate-pulse" />
+            ))}
+          </div>
+        ) : items.length === 0 ? (
           <div className="text-[11px] text-[var(--s-text-muted)] text-center py-8">
             No matches.
           </div>
@@ -107,6 +114,14 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({ plugin }) => {
   );
 };
 
+const SKELETON_TILE_COUNT = 12;
+const SKELETON_KEYS = Array.from({ length: SKELETON_TILE_COUNT }, (_, index) => `skeleton-${index}`);
+
+const markTileLoaded = (event: React.SyntheticEvent<HTMLImageElement>): void => {
+  event.currentTarget.classList.remove("opacity-0");
+  event.currentTarget.parentElement?.classList.remove("animate-pulse");
+};
+
 interface AssetTileProps {
   asset: PluginAsset;
 }
@@ -115,6 +130,7 @@ const AssetTile: React.FC<AssetTileProps> = ({ asset }) => {
   const src = resolveAssetUrl(asset.url);
 
   const handleClick = () => {
+    trackEvent("studio", "plugin_asset_inserted", { details: { method: "click" } });
     emitInsertImage({
       src,
       name: asset.name,
@@ -141,14 +157,16 @@ const AssetTile: React.FC<AssetTileProps> = ({ asset }) => {
       draggable
       onDragStart={handleDragStart}
       title={asset.name}
-      className="aspect-square rounded border border-[var(--s-border)] bg-[var(--s-bg-input)] hover:border-[var(--s-border-strong)] transition-colors flex items-center justify-center p-2 group"
+      aria-label={`Insert ${asset.name}`}
+      className="aspect-square rounded border border-[var(--s-border)] bg-[var(--s-bg-input)] animate-pulse hover:border-[var(--s-border-strong)] transition-colors flex items-center justify-center p-2 group"
     >
       <img
         src={src}
         alt={asset.name}
         loading="lazy"
         draggable={false}
-        className="max-w-full max-h-full object-contain pointer-events-none"
+        onLoad={markTileLoaded}
+        className="max-w-full max-h-full object-contain pointer-events-none opacity-0 transition-opacity"
       />
     </button>
   );

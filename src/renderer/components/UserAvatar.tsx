@@ -5,6 +5,7 @@ import { userSignal } from "../hooks/useAuth";
 import { emitModal } from "../lib/event-bus";
 import { backendEnabled } from "../lib/api-client";
 import { getAvatarGlyph } from "../lib/avatar-glyphs";
+import { trackEvent } from "../lib/tracker";
 
 export const UserAvatar: React.FC = () => {
   const user = useSignalValue(userSignal);
@@ -15,7 +16,10 @@ export const UserAvatar: React.FC = () => {
   if (!user) {
     return (
       <button
-        onClick={() => emitModal({ type: "login" })}
+        onClick={() => {
+          trackEvent("auth", "login_modal_open", { details: { trigger: "user_avatar" } });
+          emitModal({ type: "login" });
+        }}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[11px] font-medium hover:bg-zinc-700 dark:hover:bg-zinc-100 transition-all active:scale-[0.98]"
       >
         Sign in for free
@@ -25,7 +29,10 @@ export const UserAvatar: React.FC = () => {
 
   return (
     <button
-      onClick={() => navigate("/account")}
+      onClick={() => {
+        trackEvent("nav", "account_link_clicked", { details: { location: "user_avatar" } });
+        navigate("/account");
+      }}
       title="Account"
       className="flex items-center gap-2 px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all active:scale-[0.98]"
     >

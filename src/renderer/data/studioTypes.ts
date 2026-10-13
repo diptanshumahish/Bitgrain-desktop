@@ -1,3 +1,7 @@
+import { CURATED_FONT_FAMILIES } from "./curated-fonts";
+import { INDIC_FONT_FAMILIES } from "./indic-fonts";
+import { WORLD_FONT_FAMILIES } from "./world-fonts";
+
 export type TextEffect =
   | { type: "shadow"; x: number; y: number; blur: number; color: string }
   | { type: "outline"; width: number; color: string }
@@ -43,38 +47,6 @@ export interface CustomFontEntry {
   value: string;
   group: string;
 }
-
-export const FONT_PAIRINGS: Array<{
-  name: string;
-  heading: { label: string; value: string };
-  body: { label: string; value: string };
-}> = [
-  {
-    name: "Editorial",
-    heading: { label: "Playfair Display", value: "'Playfair Display', serif" },
-    body: { label: "Lato", value: "'Lato', sans-serif" },
-  },
-  {
-    name: "Modern",
-    heading: { label: "Space Grotesk", value: "'Space Grotesk', sans-serif" },
-    body: { label: "Inter", value: "'Inter', sans-serif" },
-  },
-  {
-    name: "Display",
-    heading: { label: "Bebas Neue", value: "'Bebas Neue', sans-serif" },
-    body: { label: "Open Sans", value: "'Open Sans', sans-serif" },
-  },
-  {
-    name: "Elegant",
-    heading: { label: "Cormorant", value: "'Cormorant Garamond', serif" },
-    body: { label: "EB Garamond", value: "'EB Garamond', serif" },
-  },
-  {
-    name: "Tech",
-    heading: { label: "Outfit", value: "'Outfit', sans-serif" },
-    body: { label: "DM Mono", value: "'DM Mono', monospace" },
-  },
-];
 
 export type ShapeType =
   | "rect"
@@ -294,6 +266,12 @@ export interface BaseLayer {
   anim?: import("./animation-types").LayerAnimMap;
 }
 
+export interface ImageCrop {
+  zoom: number;
+  focusX: number;
+  focusY: number;
+}
+
 export interface ImageLayer extends BaseLayer {
   type: "image";
   rotation?: number;
@@ -302,8 +280,13 @@ export interface ImageLayer extends BaseLayer {
   borderRadius?: number;
   filters?: ImageFilters;
   bitgrainEffect?: BitgrainEffect;
+  colorGrade?: import("../modules/grading/engine/grade-types").ColorGrade;
+  crop?: ImageCrop;
+  masks?: import("../modules/grading/mask/mask-types").MaskLayer[];
   shadow?: LayerShadow;
 }
+
+export type TextDecorationLine = "none" | "underline" | "line-through" | "underline line-through";
 
 export interface TextLayer extends BaseLayer {
   type: "text";
@@ -318,6 +301,7 @@ export interface TextLayer extends BaseLayer {
   letterSpacing: number;
   lineHeight: number;
   textTransform: "none" | "uppercase" | "lowercase" | "capitalize";
+  textDecoration?: TextDecorationLine;
   rotation?: number;
   effects?: TextEffect[];
   gradientText?: GradientTextConfig;
@@ -345,6 +329,9 @@ export interface UploadLayer extends BaseLayer {
   borderRadius: number;
   filters?: ImageFilters;
   bitgrainEffect?: BitgrainEffect;
+  colorGrade?: import("../modules/grading/engine/grade-types").ColorGrade;
+  crop?: ImageCrop;
+  masks?: import("../modules/grading/mask/mask-types").MaskLayer[];
   tornEdge?: TornEdgeEffect;
   tape?: TapeStrips;
   shadow?: LayerShadow;
@@ -355,6 +342,7 @@ export interface AdjustmentLayer extends BaseLayer {
   rotation?: number;
   filters?: ImageFilters;
   bitgrainEffect?: BitgrainEffect;
+  colorGrade?: import("../modules/grading/engine/grade-types").ColorGrade;
 }
 
 export interface GroupLayer extends BaseLayer {
@@ -455,7 +443,25 @@ export interface TemplateDef {
     | "id-card"
     | "grade-card"
     | "grand-opening"
-    | "pitch-deck";
+    | "pitch-deck"
+    | "letterhead"
+    | "menu"
+    | "business-card"
+    | "flyer"
+    | "book-cover"
+    | "thumbnail"
+    | "banner"
+    | "planner"
+    | "packaging"
+    | "app-screenshot"
+    | "business-docs"
+    | "sports"
+    | "stream-kit"
+    | "signage"
+    | "ticket"
+    | "greeting"
+    | "link-preview"
+    | "recipe-card";
   width: number;
   height: number;
   background: string;
@@ -468,6 +474,8 @@ export interface TemplateDef {
   featured?: boolean;
   addedAt?: string;
   tags?: string[];
+  description?: string;
+  useCases?: string[];
 }
 
 export const FONT_FAMILIES: { label: string; value: string; group: string }[] =
@@ -631,4 +639,7 @@ export const FONT_FAMILIES: { label: string; value: string; group: string }[] =
       value: "'Black Han Sans', sans-serif",
       group: "Decorative",
     },
+    ...CURATED_FONT_FAMILIES,
+    ...INDIC_FONT_FAMILIES,
+    ...WORLD_FONT_FAMILIES,
   ];

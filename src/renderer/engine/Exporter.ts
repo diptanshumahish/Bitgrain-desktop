@@ -1,31 +1,12 @@
-import { PREFIXES, MIDS, SUFFIXES } from './FilenameConstants';
 import { applyPngWatermark } from './watermark';
 import { encodeImage } from './export/export-client';
 import { EXTENSION_BY_FORMAT, type ExportFormat } from './export/export-types';
 import { applyPrintFinishToCanvas, type PrintFinishOptions } from './print-finish';
 
-const RGBA_STRIDE = 4;
-const BYTE_MAX = 255;
-const DEFAULT_TOLERANCE = 12;
-const DEFAULT_BG = '#fdf6e3';
-const HEX_SLICE_START = 2;
-const HEX_SLICE_END = 6;
 const MAX_CANVAS_FIT_ATTEMPTS = 8;
 const CANVAS_FIT_FACTOR = 0.75;
 const HARD_MAX_DIMENSION = 16384;
-
-const generateWeirdFilename = (): string => {
-  const prefix = PREFIXES[Math.floor(Math.random() * PREFIXES.length)];
-  const middle = MIDS[Math.floor(Math.random() * MIDS.length)];
-  const suffix = SUFFIXES[Math.floor(Math.random() * SUFFIXES.length)];
-  const hex = Math.random().toString(16).slice(HEX_SLICE_START, HEX_SLICE_END);
-  return `${prefix}_${middle}_${suffix}__${hex}`;
-};
-
-function hexToRgb(hex: string): [number, number, number] {
-  const value = parseInt(hex.replace('#', ''), 16);
-  return [(value >> 16) & BYTE_MAX, (value >> 8) & BYTE_MAX, value & BYTE_MAX];
-}
+const FALLBACK_FILENAME_BASE = 'bitgrain';
 
 const isCanvasRendered = (ctx: CanvasRenderingContext2D, width: number, height: number): boolean => {
   try {
@@ -151,13 +132,19 @@ export interface RasterEncodeOptions {
   quality: number;
   printFinish?: PrintFinishOptions | null;
   target?: TargetDimensions | null;
+  filenameBase?: string;
 }
 
-export const encodeAndDownload = async (
+export interface EncodedRasterFile {
+  blob: Blob;
+  filename: string;
+}
+
+export const encodeRasterFile = async (
   canvas: HTMLCanvasElement,
   options: RasterEncodeOptions,
   onProgress?: (value: number) => void,
-): Promise<void> => {
+): Promise<EncodedRasterFile> => {
   const { data, width, height } = await getExportImageData(
     canvas,
     options.scale,
@@ -178,82 +165,14 @@ export const encodeAndDownload = async (
     onProgress,
   );
   const extension = EXTENSION_BY_FORMAT[options.format];
-  triggerBlobDownload(blob, `${generateWeirdFilename()}.${extension}`);
+  return { blob, filename: `${options.filenameBase ?? FALLBACK_FILENAME_BASE}.${extension}` };
 };
 
-export const downloadSvg = (
+export const encodeAndDownload = async (
   canvas: HTMLCanvasElement,
-  _filename?: string,
-  transparent = false,
-  bgColor = DEFAULT_BG,
-): void => {
-  const filename = generateWeirdFilename();
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  const width = canvas.width;
-  const height = canvas.height;
-  const imageData = ctx.getImageData(0, 0, width, height);
-  const pixels = imageData.data;
-  const [bgR, bgG, bgB] = hexToRgb(bgColor);
-
-  const isBg = (red: number, green: number, blue: number): boolean =>
-    Math.abs(red - bgR) <= DEFAULT_TOLERANCE &&
-    Math.abs(green - bgG) <= DEFAULT_TOLERANCE &&
-    Math.abs(blue - bgB) <= DEFAULT_TOLERANCE;
-
-  const colorPaths = new Map<string, string>();
-
-  for (let y = 0; y < height; y++) {
-    let runStart = -1;
-    let runColor = '';
-
-    for (let x = 0; x <= width; x++) {
-      let pixelColor = '';
-
-      if (x < width) {
-        const pixelIndex = (y * width + x) * RGBA_STRIDE;
-        const red = pixels[pixelIndex];
-        const green = pixels[pixelIndex + 1];
-        const blue = pixels[pixelIndex + 2];
-        const alpha = pixels[pixelIndex + 3];
-
-        const skipBg = transparent && isBg(red, green, blue);
-        const skipBlack = !transparent && red === 0 && green === 0 && blue === 0;
-
-        if (alpha > 0 && !skipBlack && !skipBg) {
-          pixelColor = `rgb(${red},${green},${blue})`;
-        }
-      }
-
-      if (pixelColor === runColor && pixelColor !== '') continue;
-
-      if (runStart >= 0 && runColor) {
-        const runLength = x - runStart;
-        const segment = `M${runStart},${y}h${runLength}v1h-${runLength}z`;
-        const existing = colorPaths.get(runColor);
-        colorPaths.set(runColor, existing ? existing + segment : segment);
-      }
-
-      if (pixelColor) {
-        runStart = x;
-        runColor = pixelColor;
-      } else {
-        runStart = -1;
-        runColor = '';
-      }
-    }
-  }
-
-  let paths = '';
-  for (const [color, pathData] of colorPaths) {
-    paths += `<path fill="${color}" d="${pathData}"/>\n`;
-  }
-
-  const bgRect = transparent ? '' : `<rect width="100%" height="100%" fill="#000"/>\n`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" shape-rendering="crispEdges">
-${bgRect}${paths}</svg>`;
-
-  const blob = new Blob([svg], { type: 'image/svg+xml' });
-  triggerBlobDownload(blob, `${filename}.svg`);
+  options: RasterEncodeOptions,
+  onProgress?: (value: number) => void,
+): Promise<void> => {
+  const { blob, filename } = await encodeRasterFile(canvas, options, onProgress);
+  triggerBlobDownload(blob, filename);
 };

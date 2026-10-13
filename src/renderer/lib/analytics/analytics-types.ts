@@ -23,6 +23,7 @@ export type EventName =
   | "changelog_viewed"
   | "heic_conversion_started"
   | "heic_conversion_completed"
+  | "heic_conversion_failed"
   | "raw_conversion_started"
   | "raw_conversion_completed"
   | "raw_conversion_failed"

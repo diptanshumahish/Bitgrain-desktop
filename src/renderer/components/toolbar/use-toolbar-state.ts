@@ -7,8 +7,6 @@ import {
   resolutionSignal, contrastSignal, brightnessSignal, saturationSignal,
   grainSignal, hueSignal, printFinishSignal, printFinishStrengthSignal, paletteSignal, lutIdSignal,
   hazeIntensitySignal, bloomIntensitySignal, bloomThresholdSignal, hazeWarmthSignal,
-  halftoneCellSignal, halftoneAngleSignal, halftoneStyleSignal, halftoneShapeSignal,
-  halftoneInvertSignal, halftoneIntensitySignal, halftoneSharpnessSignal,
   popartCellSignal, popartAngleSignal, popartThresholdSignal, popartGrainSignal, popartSpatterSignal,
   popartInkSignal, popartPaperSignal,
   inkwashDetailSignal, inkwashBandsSignal, inkwashBleedSignal, inkwashInkSignal, inkwashPaperSignal,
@@ -22,7 +20,11 @@ import { trackEvent } from "../../lib/tracker";
 import type { TransformMode, DitherMethod, AsciiTone } from "../../engine/types";
 import type { PresetConfig } from "./popovers/PresetsPopover";
 import { isFilterMode } from "./filter-modes";
+import { selectMainEffect } from "./effects/select-main-effect";
 import { presetToSnapshot } from "../../engine/presets/preset-snapshot";
+
+const AURA_PALETTE_PREFIX = "aura-";
+const AURA_PALETTE_ID = "aura";
 
 export const useToolbarState = () => {
   const mode = useSignalValue(modesSignal);
@@ -50,13 +52,6 @@ export const useToolbarState = () => {
   const bloomIntensity = useSignalValue(bloomIntensitySignal);
   const bloomThreshold = useSignalValue(bloomThresholdSignal);
   const hazeWarmth = useSignalValue(hazeWarmthSignal);
-  const halftoneCell = useSignalValue(halftoneCellSignal);
-  const halftoneAngle = useSignalValue(halftoneAngleSignal);
-  const halftoneStyle = useSignalValue(halftoneStyleSignal);
-  const halftoneShape = useSignalValue(halftoneShapeSignal);
-  const halftoneInvert = useSignalValue(halftoneInvertSignal);
-  const halftoneIntensity = useSignalValue(halftoneIntensitySignal);
-  const halftoneSharpness = useSignalValue(halftoneSharpnessSignal);
   const popartCell = useSignalValue(popartCellSignal);
   const popartAngle = useSignalValue(popartAngleSignal);
   const popartThreshold = useSignalValue(popartThresholdSignal);
@@ -91,6 +86,7 @@ export const useToolbarState = () => {
     lutIdSignal.value = id;
     pushHistory();
     trackEvent("home", "lut_selected", { details: { lut_id: id } });
+    if (!id && lutId) trackEvent("home", "lut_cleared", { details: { lut_id: lutId } });
   };
 
   const currentConfig: PresetConfig = {
@@ -143,13 +139,6 @@ export const useToolbarState = () => {
     onDone();
     trackEvent("home", "haze_bloom_toggled", { details: { enabled: !hasActiveHazeBloom } });
   };
-  const setHalftoneCell = (v: number) => { halftoneCellSignal.value = v; };
-  const setHalftoneAngle = (v: number) => { halftoneAngleSignal.value = v; };
-  const setHalftoneStyle = (v: "mono" | "color" | "cmyk") => { halftoneStyleSignal.value = v; };
-  const setHalftoneShape = (v: "round" | "square") => { halftoneShapeSignal.value = v; };
-  const setHalftoneInvert = (v: boolean) => { halftoneInvertSignal.value = v; };
-  const setHalftoneIntensity = (v: number) => { halftoneIntensitySignal.value = v; };
-  const setHalftoneSharpness = (v: number) => { halftoneSharpnessSignal.value = v; };
   const setPopartCell = (v: number) => { popartCellSignal.value = v; };
   const setPopartAngle = (v: number) => { popartAngleSignal.value = v; };
   const setPopartThreshold = (v: number) => { popartThresholdSignal.value = v; };
@@ -158,12 +147,12 @@ export const useToolbarState = () => {
   const setPopartInk = (v: RGB) => { popartInkSignal.value = v; };
   const setPopartPaper = (v: RGB) => { popartPaperSignal.value = v; };
   const toggleHalftone = () => {
-    modesSignal.value = isHalftoneActive ? ["dither"] : ["halftone"];
+    selectMainEffect(isHalftoneActive ? "original" : "halftone");
     onDone();
     trackEvent("home", "halftone_toggled", { details: { enabled: !isHalftoneActive } });
   };
   const togglePopart = () => {
-    modesSignal.value = isPopartActive ? ["dither"] : ["popart"];
+    selectMainEffect(isPopartActive ? "original" : "popart");
     onDone();
     trackEvent("home", "popart_toggled", { details: { enabled: !isPopartActive } });
   };
@@ -173,7 +162,7 @@ export const useToolbarState = () => {
   const setInkwashInk = (v: RGB) => { inkwashInkSignal.value = v; };
   const setInkwashPaper = (v: RGB) => { inkwashPaperSignal.value = v; };
   const toggleInkwash = () => {
-    modesSignal.value = isInkwashActive ? ["dither"] : ["inkwash"];
+    selectMainEffect(isInkwashActive ? "original" : "inkwash");
     onDone();
     trackEvent("home", "inkwash_toggled", { details: { enabled: !isInkwashActive } });
   };
@@ -182,36 +171,39 @@ export const useToolbarState = () => {
   const setMangaLineWeight = (v: number) => { mangaLineWeightSignal.value = v; };
   const setMangaContrast = (v: number) => { mangaContrastSignal.value = v; };
   const toggleManga = () => {
-    modesSignal.value = isMangaActive ? ["dither"] : ["manga"];
+    selectMainEffect(isMangaActive ? "original" : "manga");
     onDone();
     trackEvent("home", "manga_toggled", { details: { enabled: !isMangaActive } });
   };
   const toggleAscii = () => {
-    modesSignal.value = isAsciiActive ? ["dither"] : ["ascii"];
+    selectMainEffect(isAsciiActive ? "original" : "ascii");
     onDone();
     trackEvent("home", "ascii_toggled", { details: { enabled: !isAsciiActive } });
   };
   const toggleBraille = () => {
-    modesSignal.value = isBrailleActive ? ["dither"] : ["braille"];
+    selectMainEffect(isBrailleActive ? "original" : "braille");
     onDone();
     trackEvent("home", "braille_toggled", { details: { enabled: !isBrailleActive } });
   };
   const toggleContour = () => {
-    modesSignal.value = isContourActive ? ["dither"] : ["contour"];
+    selectMainEffect(isContourActive ? "original" : "contour");
     onDone();
     trackEvent("home", "contour_toggled", { details: { enabled: !isContourActive } });
   };
   const toggleFilmGrain = () => {
     const withoutGrain = mode.filter((m) => m !== "grain");
     modesSignal.value = isGrainActive
-      ? (withoutGrain.length > 0 ? withoutGrain : ["dither"])
+      ? (withoutGrain.length > 0 ? withoutGrain : ["original"])
       : ["grain", ...mode];
     onDone();
     trackEvent("home", "film_grain_toggled", { details: { enabled: !isGrainActive } });
   };
   const setContourLevels = (v: number) => { contourLevelsSignal.value = v; };
   const setContourFill = (v: boolean) => { contourFillSignal.value = v; };
-  const setDitherMethod = (m: DitherMethod) => { ditherMethodSignal.value = m; };
+  const setDitherMethod = (m: DitherMethod) => {
+    ditherMethodSignal.value = m;
+    trackEvent("home", "dither_method_changed", { details: { method: m } });
+  };
   const setDitherFactor = (v: number) => { ditherFactorSignal.value = v; };
   const setResolution = (v: number) => { resolutionSignal.value = v; };
   const setContrast = (v: number) => { contrastSignal.value = v; };
@@ -219,18 +211,23 @@ export const useToolbarState = () => {
   const setSaturation = (v: number) => { saturationSignal.value = v; };
   const setGrain = (v: number) => { grainSignal.value = v; };
   const setHue = (v: number) => { hueSignal.value = v; };
-  const setPrintFinish = (v: boolean) => { printFinishSignal.value = v; };
+  const setPrintFinish = (v: boolean) => {
+    printFinishSignal.value = v;
+    trackEvent("home", "print_finish_toggled", { details: { enabled: v } });
+  };
   const setPrintFinishStrength = (v: number) => { printFinishStrengthSignal.value = v; };
   const setPalette = (p: typeof palette) => {
     paletteSignal.value = p;
     onDone();
+    const paletteId = p?.id.startsWith(AURA_PALETTE_PREFIX) ? AURA_PALETTE_ID : p?.id ?? null;
+    trackEvent("home", "palette_selected", { details: { palette_id: paletteId } });
   };
   const toggleIsColor = () => {
     isColorSignal.value = !isColor;
     trackEvent("home", "colorize_toggle", { details: { enabled: !isColor } });
   };
   const selectDither = () => {
-    modesSignal.value = ["dither"];
+    selectMainEffect("dither");
     onDone();
     trackEvent("home", "dither_selected");
   };
@@ -256,8 +253,6 @@ export const useToolbarState = () => {
     asciiEdges, asciiEdgeThreshold,
     ditherFactor, resolution, contrast, brightness, saturation,
     grain, hue, printFinish, printFinishStrength, palette, lutId, hazeIntensity, bloomIntensity, bloomThreshold, hazeWarmth,
-    halftoneCell, halftoneAngle, halftoneStyle, halftoneShape, halftoneInvert,
-    halftoneIntensity, halftoneSharpness,
     popartCell, popartAngle, popartThreshold, popartGrain, popartSpatter, popartInk, popartPaper,
     inkwashDetail, inkwashBands, inkwashBleed, inkwashInk, inkwashPaper,
     mangaCell, mangaAngle, mangaLineWeight, mangaContrast,
@@ -268,8 +263,6 @@ export const useToolbarState = () => {
     isInkwashActive, isMangaActive, isGrainActive, toggleFilmGrain,
     contourLevels, contourFill, setContourLevels, setContourFill,
     setMode, setHazeIntensity, setBloomIntensity, setBloomThreshold, setHazeWarmth, toggleHazeBloom,
-    setHalftoneCell, setHalftoneAngle, setHalftoneStyle, setHalftoneShape, setHalftoneInvert,
-    setHalftoneIntensity, setHalftoneSharpness,
     setPopartCell, setPopartAngle, setPopartThreshold, setPopartGrain, setPopartSpatter, setPopartInk, setPopartPaper,
     setInkwashDetail, setInkwashBands, setInkwashBleed, setInkwashInk, setInkwashPaper,
     setMangaCell, setMangaAngle, setMangaLineWeight, setMangaContrast,

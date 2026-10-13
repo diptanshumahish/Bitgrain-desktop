@@ -1,10 +1,10 @@
 import { useCallback } from "react";
-import { useUser, type UserCredits } from "./useUser";
+import { useUser } from "./useUser";
 import type { Coupon } from "./useCoupons";
-import { callApi } from "../lib/api-client";
+import { refreshAccountCredits } from "../lib/account-credits/load-account-credits";
 import { userSignal } from "./useAuth";
 import { useSignalValue } from "../lib/signal";
-import type { Currency, Bundle } from "../utils/currency";
+import type { Currency, BillingCycle } from "../utils/currency";
 import { useOrderActions } from "./use-order-actions";
 import { useCreditActions } from "./use-credit-actions";
 
@@ -12,26 +12,10 @@ export const usePayment = () => {
   const { credits, updateCredits, isUnlimited } = useUser();
   const user = useSignalValue(userSignal);
 
-  const syncServerCredits = useCallback(async () => {
+  const syncServerCredits = useCallback(async (): Promise<void> => {
     if (!user) return;
-    const remote = await callApi<{
-      png: number;
-      svg: number;
-      batch: number;
-      plan?: string;
-      planExpiresAt?: string;
-    }>("/api/credits");
-    if (remote) {
-      updateCredits(
-        remote.png,
-        remote.svg,
-        (remote.plan as UserCredits["plan"]) || "free",
-        remote.batch,
-        remote.batch,
-        remote.planExpiresAt ? new Date(remote.planExpiresAt).getTime() : undefined,
-      );
-    }
-  }, [user, updateCredits]);
+    await refreshAccountCredits(user.id);
+  }, [user]);
 
   const { triggerLegacyOrder } = useOrderActions({ credits, updateCredits, syncServerCredits });
   const { canBatch, consumeCredit, consumeCredits } = useCreditActions({
@@ -41,12 +25,12 @@ export const usePayment = () => {
 
   const triggerPayment = useCallback(
     (
-      bundleId: Bundle,
+      cycle: BillingCycle,
       appliedCoupon: Coupon | null,
       currency: Currency,
       onSuccess: () => void,
     ) => {
-      triggerLegacyOrder(bundleId, appliedCoupon, currency, onSuccess);
+      triggerLegacyOrder(cycle, appliedCoupon, currency, onSuccess);
     },
     [triggerLegacyOrder],
   );

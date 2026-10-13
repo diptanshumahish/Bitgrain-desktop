@@ -8,6 +8,8 @@ import { applyPngWatermark } from "../../../../engine/watermark";
 import { canvasToHdrBlob } from "../../../../engine/export/hdr-png-encoder";
 import { STUDIO_HDR_FORMAT } from "../../panels/export-state";
 import { renderToCanvas } from "./render-canvas";
+import { toDesignFileName, toPageFileName } from "../../../../lib/design-file-name";
+import { studioWorkNameSignal } from "../../../../store/studio-work-name";
 
 export type MultiExportFormat =
   | "image/png"
@@ -38,13 +40,20 @@ const EXT_BY_FORMAT: Record<MultiExportFormat, string> = {
   "image/hdr-png": "png",
 };
 
-const SEPARATE_DELAY_MS = 150;
-const PDF_PIXEL_UNIT = "px";
+const SEPARATE_DELAY_MS = 600;
+const PDF_POINT_UNIT = "pt";
+const POINTS_PER_CSS_PIXEL = 0.75;
+const PDF_JPEG_QUALITY = 0.92;
+
+const pagePoints = (page: TemplatePage): [number, number] => [
+  page.width * POINTS_PER_CSS_PIXEL,
+  page.height * POINTS_PER_CSS_PIXEL,
+];
 
 const safeFilename = (value: string): string =>
   value.replace(/[^a-z0-9-_]+/gi, "-").replace(/^-|-$/g, "") || "page";
 
-const renderPageToCanvas = async (
+export const renderPageToCanvas = async (
   page: TemplatePage,
   template: TemplateDef,
   fallbackImage: string | null,
@@ -105,12 +114,13 @@ export const exportPagesAsSeparate = async ({
   watermark = false,
 }: MultiExportArgs): Promise<void> => {
   const ext = EXT_BY_FORMAT[format];
-  for (let index = 0; index < pages.length; index++) {
-    const page = pages[index];
+  const blobs: Blob[] = [];
+  for (const page of pages) {
     const canvas = await renderPageToCanvas(page, template, image, scale, watermark);
-    const blob = await canvasToBlob(canvas, format, quality);
-    const name = `${safeFilename(template.id)}-${String(index + 1).padStart(2, "0")}-${safeFilename(page.name)}.${ext}`;
-    triggerDownload(blob, name);
+    blobs.push(await canvasToBlob(canvas, format, quality));
+  }
+  for (let index = 0; index < blobs.length; index++) {
+    triggerDownload(blobs[index], `${toPageFileName(studioWorkNameSignal.value, index + 1, blobs.length)}.${ext}`);
     await wait(SEPARATE_DELAY_MS);
   }
 };
@@ -141,7 +151,7 @@ export const exportPagesAsZip = async ({
   );
   const zipped = zipSync(files, { level: 0 });
   const blob = new Blob([new Uint8Array(zipped)], { type: "application/zip" });
-  triggerDownload(blob, `${safeFilename(template.id)}-pages.zip`);
+  triggerDownload(blob, `${toDesignFileName(studioWorkNameSignal.value)}.zip`);
 };
 
 export const exportPagesAsPdf = async ({
@@ -151,9 +161,9 @@ export const exportPagesAsPdf = async ({
   scale,
   watermark = false,
 }: MultiExportArgs): Promise<void> => {
-  const [firstW, firstH] = pageDims(pages[0], scale);
+  const [firstW, firstH] = pagePoints(pages[0]);
   const doc = new jsPDF({
-    unit: PDF_PIXEL_UNIT,
+    unit: PDF_POINT_UNIT,
     format: [firstW, firstH],
     orientation: firstW >= firstH ? "landscape" : "portrait",
     compress: true,
@@ -161,15 +171,15 @@ export const exportPagesAsPdf = async ({
 
   for (let index = 0; index < pages.length; index++) {
     const page = pages[index];
-    const [outW, outH] = pageDims(page, scale);
+    const [pointW, pointH] = pagePoints(page);
     const canvas = await renderPageToCanvas(page, template, image, scale, watermark);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+    const dataUrl = canvas.toDataURL("image/jpeg", PDF_JPEG_QUALITY);
     if (index > 0) {
-      doc.addPage([outW, outH], outW >= outH ? "landscape" : "portrait");
+      doc.addPage([pointW, pointH], pointW >= pointH ? "landscape" : "portrait");
     }
-    doc.addImage(dataUrl, "JPEG", 0, 0, outW, outH, undefined, "FAST");
+    doc.addImage(dataUrl, "JPEG", 0, 0, pointW, pointH, undefined, "FAST");
   }
-  doc.save(`${safeFilename(template.id)}-pages.pdf`);
+  doc.save(`${toDesignFileName(studioWorkNameSignal.value)}.pdf`);
 };
 
 export const exportPagesByMode = async (

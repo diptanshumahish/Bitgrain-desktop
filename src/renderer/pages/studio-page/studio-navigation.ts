@@ -1,13 +1,15 @@
 import { promptSaveOrLeave } from "./studio-modals";
 import { dirtySignal } from "../../store/studio-save-status";
+import { trackEvent } from "../../lib/tracker";
 
 interface NavigationConfig {
-  handleManualSave: () => Promise<void>;
+  handleManualSave: () => Promise<unknown>;
   navigate: (path: string) => void;
   onExit?: () => void;
 }
 
 export const buildHandleExit = ({ handleManualSave, navigate, onExit }: NavigationConfig) => () => {
+  trackEvent("studio", "exit_clicked", { details: { dirty: dirtySignal.value } });
   if (onExit) {
     onExit();
     return;
@@ -27,6 +29,7 @@ export const buildHandleExit = ({ handleManualSave, navigate, onExit }: Navigati
 };
 
 export const buildHandleNewProject = ({ handleManualSave, navigate, onExit }: NavigationConfig) => async () => {
+  trackEvent("studio", "new_project_clicked", { details: { dirty: dirtySignal.value } });
   if (onExit) {
     onExit();
     return;
@@ -46,7 +49,7 @@ export const buildHandleNewProject = ({ handleManualSave, navigate, onExit }: Na
 };
 
 export const promptTemplateSwitch = (
-  handleManualSave: () => Promise<void>,
+  handleManualSave: () => Promise<unknown>,
   onApply: () => void,
 ) => {
   if (!dirtySignal.value) {

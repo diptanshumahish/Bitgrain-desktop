@@ -1,7 +1,7 @@
 import { lazy, memo, Suspense, type ReactNode } from "react";
 import { useSignalValue } from "../lib/signal";
 import { documentTabsSignal, activeTabIdSignal } from "../store/document-tabs-store";
-import { HomeDashboard } from "./HomeDashboard";
+import { HomeSurface } from "./HomeSurface";
 
 // Surfaces are memoized so a tab switch (which only flips visibility) never
 // re-renders their heavy trees. Each reads its own state internally, so it still
@@ -15,7 +15,7 @@ const Studio = memo(
 const Video = memo(
   lazy(() => import("./surfaces/VideoSurface").then((m) => ({ default: m.VideoSurface }))),
 );
-const Home = memo(HomeDashboard);
+const Home = memo(HomeSurface);
 
 // Every open surface stays mounted. Only the active one is visible; the rest are
 // kept in the layout (so canvases keep their real size) but hidden and inert.

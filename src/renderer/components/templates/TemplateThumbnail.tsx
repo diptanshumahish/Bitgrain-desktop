@@ -1,3 +1,4 @@
+import { cropImageStyle } from "../../utils/image-crop";
 import React from "react";
 import type {
   TemplateDef,
@@ -338,20 +339,15 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
             ? `${Math.min(50, (uploadLayer.borderRadius / Math.min(uploadLayer.width, uploadLayer.height)) * 100)}%`
             : undefined;
         return (
-          <img
+          <div
             key={layer.id}
-            src={src}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="absolute"
+            className="absolute overflow-hidden"
             style={{
               left: `${percentX}%`,
               top: `${percentY}%`,
               width: `${percentW}%`,
               height: `${percentH}%`,
               opacity: layer.opacity,
-              objectFit: uploadLayer.fit,
               borderRadius: radius,
               filter: constructFilterString(uploadLayer.filters),
               mixBlendMode: layer.blendMode as React.CSSProperties["mixBlendMode"],
@@ -359,7 +355,17 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
                 ? `rotate(${uploadLayer.rotation}deg)`
                 : undefined,
             }}
-          />
+          >
+            <img
+              src={src}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              draggable={false}
+              className="w-full h-full block"
+              style={{ ...cropImageStyle(uploadLayer.crop), objectFit: uploadLayer.fit }}
+            />
+          </div>
         );
       }
 

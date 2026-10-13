@@ -1,6 +1,8 @@
 import type { TransformMode } from "../../engine/types";
 import type { TransformSnapshot } from "../../store/transform-store";
 import { orientRamp } from "../../engine/plugins/ascii";
+import { saturationFor } from "./colour-saturation";
+import { effectiveAsciiTone, paperRgbFor } from "./paper-surface";
 
 export interface WorkerParamsResult {
   params: Record<string, unknown>;
@@ -32,19 +34,21 @@ const buildToneParams = (snap: TransformSnapshot): Record<string, unknown> => {
     resolution: gradeOnly ? LUT_DEFAULT_RESOLUTION : snap.resolution,
     contrast: gradeOnly ? NEUTRAL_ADJUSTMENT : snap.contrast,
     brightness: gradeOnly ? NEUTRAL_ADJUSTMENT : snap.brightness,
-    saturation: gradeOnly ? NEUTRAL_ADJUSTMENT : snap.saturation,
+    saturation: gradeOnly ? NEUTRAL_ADJUSTMENT : saturationFor(snap.isColor, snap.saturation),
     isColor: gradeOnly ? true : snap.isColor,
     noise: gradeOnly ? 0 : snap.grain,
     hue: gradeOnly ? 0 : snap.hue,
     palette: gradeOnly ? null : snap.palette,
+    paperColor: gradeOnly ? undefined : paperRgbFor(snap.paperColor),
     lutId: snap.lutId,
+    grade: snap.grade,
   };
 };
 
 const buildEffectParams = (snap: TransformSnapshot): Record<string, unknown> => ({
   ditherMethod: snap.ditherMethod,
   ditherFactor: snap.ditherFactor,
-  asciiCharset: orientRamp(snap.asciiCharset, snap.asciiTone),
+  asciiCharset: orientRamp(snap.asciiCharset, effectiveAsciiTone(snap.asciiTone, snap.paperColor)),
   asciiDensity: snap.asciiDensity,
   asciiEdges: snap.asciiEdges,
   asciiEdgeThreshold: snap.asciiEdgeThreshold,
@@ -55,12 +59,15 @@ const buildEffectParams = (snap: TransformSnapshot): Record<string, unknown> => 
   bloomThreshold: snap.bloomThreshold,
   hazeWarmth: snap.hazeWarmth,
   halftoneCell: snap.halftoneCell,
+  halftoneLines: snap.halftoneLines,
   halftoneAngle: snap.halftoneAngle,
   halftoneStyle: snap.halftoneStyle,
   halftoneShape: snap.halftoneShape,
   halftoneInvert: snap.halftoneInvert,
   halftoneIntensity: snap.halftoneIntensity,
   halftoneSharpness: snap.halftoneSharpness,
+  halftoneGrit: snap.halftoneGrit,
+  halftoneSupersample: true,
   popartCell: snap.popartCell,
   popartAngle: snap.popartAngle,
   popartThreshold: snap.popartThreshold,

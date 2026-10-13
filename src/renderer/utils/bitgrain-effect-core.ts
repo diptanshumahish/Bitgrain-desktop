@@ -1,6 +1,12 @@
 import type { TransformContext } from "../engine/types";
 import type { BitgrainEffect, BitgrainEffectKind } from "../data/studioTypes";
 import { ASCII_DETAILED, ASCII_CODE, ASCII_STANDARD, ASCII_BLOCKS } from "../engine/plugins/ascii";
+import {
+  HALFTONE_DEFAULTS,
+  HALFTONE_LINES_MAX,
+  HALFTONE_LINES_MIN,
+} from "../engine/plugins/halftone/halftone-defaults";
+import { POPART_DEFAULT_CELL, POPART_MIN_CELL } from "../engine/plugins/popart/popart-defaults";
 
 export type BitgrainParamSpec =
   | { key: string; label: string; type: "number"; min: number; max: number; step: number; default: number }
@@ -46,8 +52,16 @@ export const BITGRAIN_EFFECTS: Array<{
     kind: "halftone",
     label: "Halftone",
     params: [
-      { key: "halftoneCell", label: "Cell", type: "number", min: 1, max: 200, step: 1, default: 2 },
-      { key: "halftoneAngle", label: "Angle", type: "number", min: 0, max: 360, step: 1, default: 45 },
+      {
+        key: "halftoneLines",
+        label: "Dots across",
+        type: "number",
+        min: HALFTONE_LINES_MIN,
+        max: HALFTONE_LINES_MAX,
+        step: 10,
+        default: HALFTONE_DEFAULTS.lines,
+      },
+      { key: "halftoneAngle", label: "Angle", type: "number", min: 0, max: 360, step: 1, default: HALFTONE_DEFAULTS.angle },
       {
         key: "halftoneStyle",
         label: "Style",
@@ -57,10 +71,10 @@ export const BITGRAIN_EFFECTS: Array<{
           { value: "color", label: "Color" },
           { value: "cmyk", label: "CMYK" },
         ],
-        default: "mono",
+        default: HALFTONE_DEFAULTS.style,
       },
-      { key: "halftoneIntensity", label: "Intensity", type: "number", min: 0, max: 1, step: 0.05, default: 1 },
-      { key: "halftoneInvert", label: "Invert", type: "boolean", default: false },
+      { key: "halftoneIntensity", label: "Intensity", type: "number", min: 0, max: 1, step: 0.05, default: HALFTONE_DEFAULTS.intensity },
+      { key: "halftoneInvert", label: "Invert", type: "boolean", default: HALFTONE_DEFAULTS.invert },
     ],
   },
   {
@@ -107,7 +121,7 @@ export const BITGRAIN_EFFECTS: Array<{
     kind: "popart",
     label: "Pop art",
     params: [
-      { key: "popartCell", label: "Cell", type: "number", min: 2, max: 200, step: 1, default: 2 },
+      { key: "popartCell", label: "Cell", type: "number", min: POPART_MIN_CELL, max: 200, step: 1, default: POPART_DEFAULT_CELL },
       { key: "popartAngle", label: "Angle", type: "number", min: 0, max: 360, step: 1, default: 45 },
       { key: "popartThreshold", label: "Threshold", type: "number", min: 0, max: 1, step: 0.02, default: 0.5 },
     ],
@@ -235,6 +249,7 @@ export const buildTransformContext = (
     ditherMethod: stringOrUndef(params.ditherMethod) as TransformContext["ditherMethod"],
     ditherFactor: numberOrUndef(params.ditherFactor),
     halftoneCell: numberOrUndef(params.halftoneCell),
+    halftoneLines: numberOrUndef(params.halftoneLines),
     halftoneAngle: numberOrUndef(params.halftoneAngle),
     halftoneStyle: stringOrUndef(params.halftoneStyle) as TransformContext["halftoneStyle"],
     halftoneIntensity: numberOrUndef(params.halftoneIntensity),

@@ -1,8 +1,9 @@
-import { useRef, useCallback } from "react";
+import { useCallback } from "react";
 import type { TemplateDef, Layer, TemplatePage } from "../../../data/studioTypes";
 import { signal } from "../../../lib/signal";
+import { trackEvent } from "../../../lib/tracker";
 import { exportStudio } from "../hooks/useStudioExport";
-import { usePayment } from "../../../hooks/usePayment";
+import { resolveExportPlan } from "../../../lib/plan-gate/resolve-export-plan";
 import { getPlanLimits } from "../../../config/plan-limits";
 import { clampDimsToLongEdge } from "../panels/export-clamp";
 import {
@@ -25,7 +26,6 @@ interface UseExportHandlersArgs {
 }
 
 interface ExportHandlers {
-  anchorRef: React.RefObject<HTMLDivElement | null>;
   handleExport: () => Promise<void>;
   openExportPopup: () => void;
   openExportOptions: () => void;
@@ -40,6 +40,8 @@ const baseSize = (
   return [page?.width ?? template.width, page?.height ?? template.height];
 };
 
+const PNG_QUALITY = 0.92;
+
 const getOutputDims = (baseW: number, baseH: number): [number, number] => {
   const scaleOpt = scaleOptSignal.value;
   if (scaleOpt === "custom") {
@@ -51,12 +53,10 @@ const getOutputDims = (baseW: number, baseH: number): [number, number] => {
 export const useExportHandlers = ({
   template, background, layers, image, pages, activePageId,
 }: UseExportHandlersArgs): ExportHandlers => {
-  const anchorRef = useRef<HTMLDivElement | null>(null);
-  const { credits } = usePayment();
-  const limits = getPlanLimits(credits.plan);
-  const watermark = limits.watermark;
-
   const handleExport = useCallback(async () => {
+    const plan = await resolveExportPlan();
+    if (!plan) return;
+    const limits = getPlanLimits(plan);
     exportingSignal.value = true;
     try {
       const [baseW, baseH] = baseSize(template, pages, activePageId);
@@ -65,20 +65,19 @@ export const useExportHandlers = ({
       await exportStudio(
         { ...template, width: baseW, height: baseH },
         background, layers, image, outW, outH,
-        "image/png", 0.92, watermark,
+        "image/png", PNG_QUALITY, limits.watermark,
       );
     } finally {
       exportingSignal.value = false;
     }
-  }, [template, background, layers, image, pages, activePageId, watermark, limits.maxExportLongEdge]);
+  }, [template, background, layers, image, pages, activePageId]);
 
   const openExportPopup = useCallback(() => {
     if (exportPopupSignal.value !== null) {
       exportPopupSignal.value = null;
       return;
     }
-    const rect = anchorRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    trackEvent("studio", "export_popup_opened", { details: { source: "export_button" } });
     const scaleOpt = scaleOptSignal.value;
     const [baseW, baseH] = baseSize(template, pages, activePageId);
     if (scaleOpt !== "custom") {
@@ -87,21 +86,20 @@ export const useExportHandlers = ({
     }
     exportPopupSignal.value = {
       template, background, layers, image,
-      anchorRect: rect, pages, activePageId,
+      pages, activePageId,
     };
   }, [template, background, layers, image, pages, activePageId]);
 
   const openExportOptions = useCallback(() => {
-    const rect = anchorRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    trackEvent("studio", "export_popup_opened", { details: { source: "export_options" } });
     const [baseW, baseH] = baseSize(template, pages, activePageId);
     customWSignal.value = baseW * SCALE_VALUES["2x"];
     customHSignal.value = baseH * SCALE_VALUES["2x"];
     exportPopupSignal.value = {
       template, background, layers, image,
-      anchorRect: rect, pages, activePageId,
+      pages, activePageId,
     };
   }, [template, background, layers, image, pages, activePageId]);
 
-  return { anchorRef, handleExport, openExportPopup, openExportOptions };
+  return { handleExport, openExportPopup, openExportOptions };
 };

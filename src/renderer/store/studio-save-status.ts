@@ -1,6 +1,6 @@
 import { signal } from "../lib/signal";
 
-export type SaveStatus = "idle" | "saving" | "saved";
+export type SaveStatus = "idle" | "saving" | "saved" | "retrying";
 
 export const saveStatusSignal = signal<SaveStatus>("idle");
 
@@ -31,4 +31,12 @@ export const markSaved = (): void => {
   resetTimer = setTimeout(() => {
     saveStatusSignal.value = "idle";
   }, SAVED_VISIBLE_MS);
+};
+
+export const markRetrying = (): void => {
+  if (resetTimer) {
+    clearTimeout(resetTimer);
+    resetTimer = null;
+  }
+  saveStatusSignal.value = "retrying";
 };

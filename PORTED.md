@@ -56,6 +56,63 @@ Hand resolutions to re-apply on the next re-sync:
 
 Superseded files left on disk (unreferenced, safe to delete): `components/studio/hooks/export/draw-text.ts`, `components/studio/hooks/export/text-helpers.ts`, `components/studio/panels/BackgroundProperties.tsx`, `components/studio/panels/PageProperties.tsx`, `studio-plugins/host/render-plugin-icon.tsx`, `modules/video/components/panels/Export{Panel,ProgressBar,SummaryCard,Toast}.tsx`, `components/studio/canvas/use-placement-tool.ts`.
 
+## Web re-sync, 2026-10-13
+
+Brought the desktop up to web `ddb201d` (84 commits since `765ed1f`). Method: each differing desktop file was matched against every historical web version of that file. 203 that matched a web version exactly (untouched by desktop) were replaced with web HEAD; 32 carrying desktop edits were three-way merged against their closest web ancestor; 455 new files came in as the transitive import closure (plus the 45 new `engine/` files and `public/sample-thumbs/`). **`modules/video/` was not synced** (forked, see below); only `video-projects-store.ts` was adapted to the new `syncToCloud`/`fetchProject` API. New dep: `heic-to@1.6.6` (exact, as web).
+
+`src/renderer/engine/` is again byte-identical to web apart from deviation 1. render-check and parallel-check pass.
+
+Brings in: darkroom grading/Tone panel (`modules/grading`) with masks, `EditorPreview`, new empty state with sample strip, undoable clear, mosh toast, status/undo toasts, page colour row, self-contained halftone popover with presets, film grain; studio tabbed left panel (Layers/Elements/Templates, `modules/elements`), autosave with retry, keyboard-shortcuts sheet and new-design dialog, safe project load; shared tracker split into `lib/tracker/`; world/Indic/curated font lists.
+
+Hand resolutions to re-apply on the next re-sync:
+
+- `App.tsx`: desktop kept; mounts web's `MoshToastPortal`, `StatusToastPortal`, `UndoToastPortal`. `TemplatePreviewPortal` not mounted (only web template pages emit it).
+- `ModalPortal.tsx`: re-derived from desktop; adds `mask-area`, `keyboard-shortcuts`, `new-design`, `safeDefault`/`notice`, HEIC `failed`; `selective-effect` dropped (web removed it). Payment/auth/upgrade/ticket still not rendered.
+- `pages/Home.tsx`: web body (stores, `EditorPreview`, `EditorTonePanel`, `EDITOR_DOWNLOADS`, `shareRecipe`, `clearImageWithUndo`) inside desktop chrome (rail `DarkroomPanel`, title-bar `DesktopExportButton`, native-menu commands). `EditorEmptyState` mounts only while the darkroom is the active surface, because it listens for drop/paste on the window.
+- `use-home-init.ts`: only `useEditorShortcuts`; no session restore (instance model), no unload guard (`beforeunload` would block window close), no tour, no URL recipes.
+- `DarkroomPanel.tsx` (desktop): new `popovers/halftone/HalftonePopover` API, `PageColourRow`, film grain toggle, Tone button.
+- `DesktopExportButton.tsx` (desktop): `credits` prop removed, `effectsData` typed as web's; `Home` feeds it from `useToolbarState`.
+- `components/transitions/route-preloaders.ts`: **desktop stub** (no-op), so `page-transition-events.ts` stays verbatim without pulling web routes.
+- `lib/tracker.ts` replaced by web's `lib/tracker/` (PostHog side still stubbed).
+- `lib/api-client.ts`: desktop bearer-token fallback moved into web's `buildHeaders`.
+- `hooks/useAuth.ts`: `deleteAccount` still omitted.
+- `toolbar/slider.tsx`: web `SliderTrack` with desktop haptics wrapped around `onChange`.
+- `output-preview/export-render.ts`: banded export (deviation 7) only when no grading mask is active; otherwise single worker with web's mask params.
+- Studio: `LeftPanel`/`PagedLayersList` web versions with desktop `onAddFrame`/`frameWidth`/`frameHeight` + `AddFrameMenu`; `use-studio-pages` web `addPage`/`duplicatePageById` + desktop `addPageWithSize`; `use-studio-persist` web loader/outcomes + desktop instance load/save (now via `serializePages`, which also fixes the old desktop save dropping `backgroundVar`/`clip`), instance save returns `"saved"`; `Studio.tsx` web `useStudioAutosave` replaces the desktop debounce, `initialTemplate` prop takes precedence for new tabs; `StudioWorkspace`/`TopBar` keep desktop chrome; `use-studio-init` uses web `ensurePluginsLoaded`.
+- `ExportPopup.tsx` + `export-popup/QualitySlider.tsx`: quality slider also shown for PNG ("Quality (colour reduction)"); `QualitySlider` gained an optional `label` prop.
+- `pages/VideoEditor.tsx`: desktop kept (entry to the forked module).
+- Deleted (removed on web, unreferenced on desktop): `lib/tracker.ts`, `hooks/payment-helpers.ts`, `hooks/start-paypal-redirect.ts`, `studio/panels/text/PairingsPanel.tsx`.
+- Check scripts: `tabs-check`/`persistence-check` click the sample thumbnail (`aria-label^="Try the sample photo"`) instead of the old "try a sample" button.
+
+Known gaps: (font gap resolved by the follow-up below, except the world/CJK sheet). Web's empty-state copy says "rendered in your browser".
+
+### Follow-up, same day: web `f4d1bef`, templates, hub, design language
+
+Brought in web `f4d1bef` (first-run welcome) and the web pages the desktop had no entry for. New closure (~175 files): `pages/Templates.tsx`, `pages/TemplateFormat.tsx`, `components/templates/**`, `components/portal/template-preview/**`, `components/hub/**`, `components/onboarding/welcome/**`, `pages/landing-page/HubDestinations.ts` + `home/showcase/*`, `components/prerendered-preview/*`, 13 `public/art/*.webp`. Updated to web: `lib/device-capability.ts`, `modules/tracking/track-template-click.ts`, `lib/tracker/track-page.ts`. New dev dep `@tailwindcss/typography@0.5.19` (exact).
+
+Desktop deviations to re-apply:
+
+- `shell/HomeSurface.tsx` (desktop): the home tab owns the HashRouter location. `/` is `HomeDashboard`, `/templates` and `/templates/:category` render web's `Templates`/`TemplateFormat` in a scroll container (`data-home-scroll`). `/editor`, `/studio`, `/video` (web links in hub quick actions, the welcome chooser, templates nav) open a new tab of that surface, only when home is the active tab, then the location returns to the last home page; any other path falls back the same way.
+- `shell/HomeDashboard.tsx` (desktop): rebuilt from web Hub pieces: `HubGreeting`, `HubQuickActions`, `HubTemplatesSection`, `HubAsciiBackground` (boxed in a transformed layer so its `position: fixed` canvas stays inside home, mounted only while home is active), `useWelcomeAutostart`. Sidebar gains Home / Templates; "Open work" filters, Library and blank studio formats kept.
+- `pages/Templates.tsx`, `pages/TemplateFormat.tsx`: Helmet and `ProductHuntBadge` stripped; `scrollToContent` scrolls the home container instead of the window.
+- `components/templates/preview/use-start-template.ts`: fetches the full template and calls `openStudioTemplate` instead of navigating to `/studio/edit/<id>?template=`, which every mounted studio would read.
+- `components/transitions/page-transition-events.ts`: `createTransitionClickHandler` is a no-op (no `PageTransitionPortal`), so Links navigate normally.
+- `App.tsx`: mounts `TemplatePreviewPortal` and `WelcomePortal` (supersedes the note above).
+- `src/main/security.ts`: CSP `font-src` adds the API origin for admin-uploaded template fonts (`lib/admin-fonts.ts`); still no third-party font host.
+- `index.css`: see deviation 4 (web design system adopted).
+- **Bundled Google Fonts (`lib/load-studio-fonts.ts`, desktop).** The web loads its studio, curated, Indic and world font families, plus its UI fonts, from the Google Fonts CDN. The desktop app makes no font CDN request. Instead, `scripts/fetch-google-fonts.mjs` (run by hand after a re-sync) reads those stylesheet URLs from the web sources and downloads every `.woff2` slice into `src/renderer/public/fonts/google/` (17 MB). It then writes local `ui`/`studio`/`curated`/`indic` stylesheets, which the desktop `ensureStudioFontsLoaded` links in place of the CDN (`ui.css` is linked from `index.html`). The world sheet (CJK and other scripts, about 113 MB) exceeds the 120 MB budget and is not bundled, so those families render in a fallback font.
+- Check scripts: `surfaces-check` lands on "What are we making?" and opens studio via the "Blank design" quick action.
+
+### Native-app feel (2026-10-13)
+
+- `src/main/menu.ts`: the app-wide right-click menu (undo/redo, New, Documentation, Report a Bug, Reveal, dev Reload/Inspect) is gone. Only text fields get cut/copy/paste/select all, and selected text gets Copy; surfaces keep their own in-app menus. The same commands remain in the menu bar.
+- `src/main/window.ts` `lockDownBrowserBehaviour`: Cmd/Ctrl+R, Shift+Cmd+R and F5 are swallowed before the renderer sees them (this also disables web studio's Cmd+R reload in `useStudioShortcuts.ts`), the page cannot navigate away from its document, and pinch-zoom is pinned to 1. Dev builds keep Cmd/Ctrl+Alt+I for DevTools.
+- Web marketing copy removed: the home sidebar tagline, `EmptyStateHeading`'s "rendered in your browser. no AI, ever." subline, and the darkroom "Sample image, SVG export unlocked" pill in `pages/Home.tsx`.
+
+### Dead files removed before commit (2026-10-13)
+
+Unreachable from every entry point (`main.tsx`, `App.tsx`, both harnesses), so not re-copied on future syncs: `components/FloatingToolbar.tsx`, `components/portal/TutorialPortal.tsx`, `components/tutorial/TutorialTooltip.tsx`, `data/tutorial-steps.ts`, `components/studio/topbar/TopBarMenus.tsx`, `components/toolbar/{CanvasToolbar,MobileEffectsSheet,MobileToolbar}.tsx`, `components/transitions/PageTransitionPortal.tsx`, `pages/home-page/{HomeFooter,HomeHeader}.tsx`. Their web-only children were never added (`toolbar/mobile/*`, `toolbar/popover-back/from-effects-sheet.ts`, `lib/tracker/error-tracking.ts`, `home-page/header/HeaderPlanPill.tsx`).
+
 ## M7 slice (Feature modals), imported 2026-07-25
 
 The web `ModalPortal` and its modal subtree were originally skipped, which silently disabled every modal-driven feature — in the darkroom: crop, selective effect, colour studio, riso export; in studio: resize, mockup (smart object), pattern, animate, present, changelog, batch; plus the shared confirm/prompt dialogs and the HEIC conversion toast. This slice restores them.
@@ -188,10 +245,14 @@ Replaced with a function returning `null`. This removes the `posthog-js` depende
 
 Its only purpose was `react-helmet-async` meta tags. Meaningless in a desktop app. The import and the `<HomeSeo />` element were removed from `Home.tsx`.
 
-### 4. `src/renderer/index.css`, two lines removed
+### 4. `src/renderer/index.css`, web verbatim plus a desktop tail (revised 2026-10-13)
 
-- The Google Fonts `@import` (Instrument Serif, Caveat). It was a startup network request, which contradicts the offline promise. Neither family is referenced anywhere in the ported code, so there is no visual change.
-- `@plugin "@tailwindcss/typography"`. No ported file uses a `prose` class.
+Web's `index.css` (Manrope / JetBrains Mono monochrome system, `@tailwindcss/typography` plugin, now a pinned dev dep) is copied whole; it no longer `@import`s Google Fonts (web links them from `index.html`). The desktop appends one block at the end:
+
+- Akasha `@font-face` (still the default studio text face in `utils/studio-layers.ts` and the forked video module's template face; web stopped declaring it).
+- `.studio-slider` (used only by the forked video module).
+
+The UI faces web loads from the Google CDN in `index.html` are bundled under `public/fonts/google/` and linked from the desktop `index.html` instead.
 
 ### 6. `src/renderer/pages/Home.tsx`, root height `h-screen` to `h-full`
 

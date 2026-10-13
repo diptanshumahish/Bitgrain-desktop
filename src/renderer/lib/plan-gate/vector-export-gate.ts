@@ -12,10 +12,14 @@ export class VectorExportLockedError extends Error {
   }
 }
 
-export function allowVectorExportOrPrompt(plan: string, trigger: string): boolean {
-  if (getPlanLimits(plan).allowSvgExport) return true;
+export function openVectorUpgradePrompt(trigger: string): void {
   trackPosthog("payment_modal_opened", { trigger });
   trackEvent("payment", "modal_opened", { details: { trigger } });
-  emitModal({ type: "studio-payment" });
+  emitModal({ type: "upgrade-prompt", feature: "svg" });
+}
+
+export function allowVectorExportOrPrompt(plan: string, trigger: string): boolean {
+  if (getPlanLimits(plan).allowSvgExport) return true;
+  openVectorUpgradePrompt(trigger);
   return false;
 }

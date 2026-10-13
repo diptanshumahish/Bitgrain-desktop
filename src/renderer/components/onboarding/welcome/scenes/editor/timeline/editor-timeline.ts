@@ -1,0 +1,11 @@
+export const STEP_GAP_MS = 1400;
+export const PICK_TEMPLATE_MS = 1600;
+export const CLICK_HEADLINE_MS = PICK_TEMPLATE_MS + STEP_GAP_MS;
+export const PICK_PHOTO_MS = CLICK_HEADLINE_MS + STEP_GAP_MS + 600;
+export const DROP_PHOTO_MS = PICK_PHOTO_MS + 1100;
+export const CLICK_PALETTE_MS = DROP_PHOTO_MS + STEP_GAP_MS;
+export const CLICK_EXPORT_MS = CLICK_PALETTE_MS + STEP_GAP_MS;
+export const TYPE_START_MS = CLICK_HEADLINE_MS + 250;
+export const LETTER_STEP_MS = 70;
+export const CURSOR_ENTER_MS = 700;
+export const CURSOR_TRAVEL_MS = 750;

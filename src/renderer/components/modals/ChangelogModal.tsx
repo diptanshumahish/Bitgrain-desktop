@@ -26,7 +26,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose }) => {
           <div>
             <div className="flex items-center gap-2">
               <p className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">
-                Release Notes
+                Release notes
               </p>
               <span className="font-mono text-[10.5px] text-zinc-500 dark:text-zinc-500">
                 v{latest}

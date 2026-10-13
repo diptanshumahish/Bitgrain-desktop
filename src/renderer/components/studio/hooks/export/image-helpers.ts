@@ -1,3 +1,6 @@
+import type { ImageCrop } from "../../../../data/studioTypes";
+import { fittedRect, type FittedRect, type ImageFit } from "../../../../utils/image-crop";
+
 export const applyFlip = (
   ctx: CanvasRenderingContext2D,
   layer: { x: number; y: number; width: number; height: number; flipH?: boolean; flipV?: boolean },
@@ -38,34 +41,13 @@ type DrawSource = HTMLImageElement | HTMLCanvasElement;
 const sourceWidth = (img: DrawSource): number => img.width;
 const sourceHeight = (img: DrawSource): number => img.height;
 
-export const coverFit = (
+export const drawFitted = (
   ctx: CanvasRenderingContext2D,
   img: DrawSource,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
+  fit: ImageFit,
+  box: FittedRect,
+  crop?: ImageCrop,
 ): void => {
-  const iw = sourceWidth(img);
-  const ih = sourceHeight(img);
-  const scale = Math.max(w / iw, h / ih);
-  const dw = iw * scale;
-  const dh = ih * scale;
-  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
-};
-
-export const containFit = (
-  ctx: CanvasRenderingContext2D,
-  img: DrawSource,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-): void => {
-  const iw = sourceWidth(img);
-  const ih = sourceHeight(img);
-  const scale = Math.min(w / iw, h / ih);
-  const dw = iw * scale;
-  const dh = ih * scale;
-  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+  const rect = fittedRect(fit, sourceWidth(img), sourceHeight(img), box, crop);
+  ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height);
 };

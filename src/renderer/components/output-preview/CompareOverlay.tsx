@@ -74,10 +74,10 @@ export const CompareLabels: React.FC<CompareLabelsProps> = ({ bounds }) => (
     }}
   >
     <span className="text-[10px] font-semibold text-white/80 bg-black/40 px-2 py-0.5 rounded ml-2 font-editorial">
-      ORIGINAL
+      original
     </span>
     <span className="text-[10px] font-semibold text-white/80 bg-black/40 px-2 py-0.5 rounded ml-auto mr-2 font-editorial">
-      EDITED
+      edited
     </span>
   </div>
 );

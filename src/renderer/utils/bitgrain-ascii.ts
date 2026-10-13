@@ -2,6 +2,7 @@ import type { BitgrainEffect } from "../data/studioTypes";
 import { runTransform } from "../engine/engine";
 import { buildTransformContext } from "./bitgrain-effect-core";
 import { ASCII_CELL_W, ASCII_CELL_H, ASCII_TARGET_COLS } from "../engine/plugins/ascii";
+import { asciiSampleSize } from "../engine/plugins/ascii/ascii-sampling";
 import { renderChars, asciiSurface } from "../components/output-preview/render-helpers";
 
 const MIN_COLS = 20;
@@ -20,19 +21,24 @@ export const renderAsciiCanvas = (
   const cols = Math.max(MIN_COLS, ASCII_TARGET_COLS);
   const rows = Math.max(1, Math.round(cols * (srcH / Math.max(1, srcW)) * CHAR_ASPECT));
 
+  const { sampleWidth, sampleHeight } = asciiSampleSize(cols, rows, true);
   const grid = document.createElement("canvas");
-  grid.width = cols;
-  grid.height = rows;
+  grid.width = sampleWidth;
+  grid.height = sampleHeight;
   const gridCtx = grid.getContext("2d", { willReadFrequently: true });
   if (!gridCtx) return grid;
   gridCtx.imageSmoothingEnabled = true;
-  gridCtx.drawImage(source, 0, 0, cols, rows);
+  gridCtx.imageSmoothingQuality = "high";
+  gridCtx.drawImage(source, 0, 0, sampleWidth, sampleHeight);
 
-  const imageData = gridCtx.getImageData(0, 0, cols, rows);
-  const data = new Float32Array(imageData.data.length);
-  for (let i = 0; i < data.length; i += 1) data[i] = imageData.data[i];
+  const imageData = gridCtx.getImageData(0, 0, sampleWidth, sampleHeight);
+  const data = new Float32Array(imageData.data);
 
-  const transformContext = buildTransformContext(data, cols, rows, effect);
+  const transformContext = {
+    ...buildTransformContext(data, sampleWidth, sampleHeight, effect),
+    asciiGridCols: cols,
+    asciiGridRows: rows,
+  };
   const result = runTransform("ascii", transformContext);
   if (!result.charData) return grid;
 

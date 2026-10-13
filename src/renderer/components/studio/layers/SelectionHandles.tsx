@@ -77,6 +77,15 @@ const ANCHOR: Record<HandleDir, { left: string; top: string }> = {
   w: { left: "0%", top: "50%" },
 };
 
+const HORIZONTAL_EDGES: HandleDir[] = ["n", "s"];
+const VERTICAL_EDGES: HandleDir[] = ["e", "w"];
+
+const handleSize = (dir: HandleDir, handleW: number, handleH: number): { width: string; height: string } => {
+  if (HORIZONTAL_EDGES.includes(dir)) return { width: `calc(100% - ${handleW}px)`, height: `${handleH}px` };
+  if (VERTICAL_EDGES.includes(dir)) return { width: `${handleW}px`, height: `calc(100% - ${handleH}px)` };
+  return { width: `${handleW}px`, height: `${handleH}px` };
+};
+
 interface RotateState {
   centerX: number;
   centerY: number;
@@ -194,8 +203,7 @@ export const SelectionHandles: React.FC<SelectionHandlesProps> = ({
           key={dir}
           className="absolute z-20 pointer-events-auto"
           style={{
-            width: handleW,
-            height: handleH,
+            ...handleSize(dir, handleW, handleH),
             cursor: CURSOR[dir],
             left: ANCHOR[dir].left,
             top: ANCHOR[dir].top,

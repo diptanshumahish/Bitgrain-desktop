@@ -28,6 +28,9 @@ interface DraggingTarget {
   lastNY: number;
   movedTo: AnchorCornerType | null;
   t?: number;
+  pressClientX?: number;
+  pressClientY?: number;
+  bent?: boolean;
 }
 
 interface HoveredSegment {
@@ -47,6 +50,13 @@ const HOVER_DOT_STROKE = 1.25;
 const HIT_STROKE_SCREEN = 14;
 const SKELETON_STROKE_SCREEN = 1.25;
 const T_EPSILON = 0.005;
+const BEND_START_SCREEN_PX = 3;
+
+const pastBendThreshold = (drag: DraggingTarget, event: React.PointerEvent): boolean =>
+  Math.max(
+    Math.abs(event.clientX - (drag.pressClientX ?? event.clientX)),
+    Math.abs(event.clientY - (drag.pressClientY ?? event.clientY)),
+  ) >= BEND_START_SCREEN_PX;
 
 export const VectorNodeEditor: React.FC<VectorNodeEditorProps> = ({
   layer,
@@ -149,6 +159,7 @@ export const VectorNodeEditor: React.FC<VectorNodeEditorProps> = ({
         kind: "bendSegment", idx: segmentIdx,
         lastNX: point.x, lastNY: point.y,
         movedTo: null, t,
+        pressClientX: event.clientX, pressClientY: event.clientY, bent: false,
       };
       return;
     }
@@ -166,6 +177,10 @@ export const VectorNodeEditor: React.FC<VectorNodeEditorProps> = ({
     if (event.buttons === 0) {
       draggingRef.current = null;
       return;
+    }
+    if (drag.kind === "bendSegment" && !drag.bent) {
+      if (!pastBendThreshold(drag, event)) return;
+      drag.bent = true;
     }
     const cur = localNorm(event);
     const dx = cur.x - drag.lastNX;
@@ -190,7 +205,9 @@ export const VectorNodeEditor: React.FC<VectorNodeEditorProps> = ({
   };
 
   const handlePointerUp = () => {
+    const drag = draggingRef.current;
     draggingRef.current = null;
+    if (drag?.kind === "bendSegment" && !drag.bent) insertAnchorOnSegment(drag.idx, drag.t ?? 0.5);
     if (svgRef.current) svgRef.current.style.cursor = "";
   };
 
@@ -267,7 +284,7 @@ export const VectorNodeEditor: React.FC<VectorNodeEditorProps> = ({
             <path
               d={d}
               fill="none"
-              stroke="var(--s-accent)"
+              stroke="var(--s-canvas-selection)"
               strokeWidth={SKELETON_STROKE_SCREEN / scale}
               className="pointer-events-none"
               shapeRendering="geometricPrecision"
@@ -293,7 +310,7 @@ export const VectorNodeEditor: React.FC<VectorNodeEditorProps> = ({
           cy={hoverDot.y}
           r={HOVER_DOT_SCREEN_RADIUS / scale}
           fill="white"
-          stroke="var(--s-accent)"
+          stroke="var(--s-canvas-selection)"
           strokeWidth={HOVER_DOT_STROKE / scale}
           className="pointer-events-none"
           shapeRendering="geometricPrecision"

@@ -1,15 +1,22 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useRef } from 'react'
 import { ImagePlus } from 'lucide-react'
 import type { UploadLayer } from '../../../data/studioTypes'
 import type { HandleDir } from './SelectionHandles'
 import { SelectionHandles } from './SelectionHandles'
 import { useLayerDrag } from '../hooks/useLayerDrag'
 import { composeLayerFilter, buildShadowFilter, constructFilterString } from '../../../utils/filter-utils'
-import { useBitgrainPreview } from '../hooks/useBitgrainPreview'
+import { usePhotoLookPreview } from '../../../modules/grading/studio/use-photo-look-preview'
+import { lookFromLayer } from '../../../modules/grading/studio/photo-look'
 import { resolveAssetUrl } from '../../../lib/api-client'
 import { PIXELATE_MIN_SCALE } from '../canvas/canvas-transform'
 import { buildTornEdge, hashStringSeed, polygonToCssClip } from '../../../utils/torn-edge'
 import { buildTapePieces } from '../../../utils/tape'
+import { useSignalValue } from '../../../lib/signal'
+import { cropImageStyle } from '../../../utils/image-crop'
+import { cropLayerIdSignal, enterCropMode } from './crop/crop-mode-signal'
+import { useCropInteraction } from './crop/use-crop-interaction'
+import { CropGhost } from './crop/CropGhost'
+import type { ImageCrop } from '../../../data/studioTypes'
 
 interface UploadLayerViewProps {
   layer: UploadLayer
@@ -24,6 +31,7 @@ interface UploadLayerViewProps {
   onResizeDelta: (dir: HandleDir, dx: number, dy: number) => void
   onResizeEnd: () => void
   onContextMenu?: (e: React.MouseEvent) => void
+  onCropChange?: (crop: ImageCrop) => void
 }
 
 const FIT: Record<UploadLayer['fit'], React.CSSProperties['objectFit']> = {
@@ -34,12 +42,20 @@ const FIT: Record<UploadLayer['fit'], React.CSSProperties['objectFit']> = {
 
 export const UploadLayerView: React.FC<UploadLayerViewProps> = ({
   layer, selected, scale, zIndex, hideSelectionUi, interactive,
-  onSelect, onMoveDelta, onMoveEnd, onResizeDelta, onResizeEnd, onContextMenu,
+  onSelect, onMoveDelta, onMoveEnd, onResizeDelta, onResizeEnd, onContextMenu, onCropChange,
 }) => {
-  const drag = useLayerDrag({ onMoveDelta, onMoveEnd, scale, selected, onSelect, interactive })
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
+  const cropping = useSignalValue(cropLayerIdSignal) === layer.id && !!layer.src
+  const drag = useLayerDrag({ onMoveDelta, onMoveEnd, scale, selected, onSelect, interactive, blocked: cropping })
+  const cropDrag = useCropInteraction({
+    active: cropping, fit: layer.fit, crop: layer.crop, width: layer.width, height: layer.height,
+    scale, flipH: layer.flipH, flipV: layer.flipV, wrapRef, imgRef, onCropChange,
+  })
+  const pointer = cropping ? cropDrag : drag
   const showChrome = selected && !hideSelectionUi
   const effectiveSrc = resolveAssetUrl(layer.src)
-  const effectPreviewSrc = useBitgrainPreview(effectiveSrc, layer.bitgrainEffect)
+  const effectPreviewSrc = usePhotoLookPreview(effectiveSrc, lookFromLayer(layer))
   const renderSrc = effectPreviewSrc ?? effectiveSrc
 
   const torn = layer.src ? layer.tornEdge : undefined
@@ -60,6 +76,7 @@ export const UploadLayerView: React.FC<UploadLayerViewProps> = ({
 
   return (
     <div
+      ref={wrapRef}
       className="absolute overflow-visible origin-center"
       style={{
         left: layer.x,
@@ -69,8 +86,8 @@ export const UploadLayerView: React.FC<UploadLayerViewProps> = ({
         opacity: layer.opacity,
         zIndex,
         borderRadius: torn ? 0 : layer.borderRadius,
-        cursor: !layer.src ? 'pointer' : (selected ? 'move' : 'default'),
-        outline: showChrome ? `${2 / scale}px solid var(--s-handle)` : undefined,
+        cursor: cropping ? 'grab' : !layer.src ? 'pointer' : (selected ? 'move' : 'default'),
+        outline: cropping ? `${2 / scale}px solid var(--s-canvas-selection)` : showChrome ? `${2 / scale}px solid var(--s-handle)` : undefined,
         outlineOffset: 1 / scale,
         background: layer.src ? 'transparent' : 'rgba(100,100,100,0.15)',
         mixBlendMode: layer.blendMode as React.CSSProperties["mixBlendMode"],
@@ -79,10 +96,14 @@ export const UploadLayerView: React.FC<UploadLayerViewProps> = ({
       }}
       onClick={(e) => { e.stopPropagation(); if (!drag.directSelect) onSelect(e.shiftKey) }}
       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(e); }}
-      onPointerDown={drag.onPointerDown}
-      onPointerMove={drag.onPointerMove}
-      onPointerUp={drag.onPointerUp}
+      onDoubleClick={(e) => { if (!layer.src) return; e.stopPropagation(); enterCropMode(layer.id) }}
+      onPointerDown={pointer.onPointerDown}
+      onPointerMove={pointer.onPointerMove}
+      onPointerUp={pointer.onPointerUp}
     >
+      {cropping && renderSrc && (
+        <CropGhost src={renderSrc} fit={layer.fit} crop={layer.crop} width={layer.width} height={layer.height} scale={scale} />
+      )}
       {torn && tornClips && torn.border > 0 && (
         <div
           className="absolute inset-0 pointer-events-none"
@@ -95,10 +116,12 @@ export const UploadLayerView: React.FC<UploadLayerViewProps> = ({
       >
         {layer.src ? (
           <img
+            ref={imgRef}
             src={renderSrc ?? effectiveSrc ?? layer.src}
             draggable={false}
             className="w-full h-full block pointer-events-none"
             style={{
+              ...cropImageStyle(layer.crop),
               objectFit: FIT[layer.fit],
               filter: torn ? constructFilterString(layer.filters) : undefined,
               imageRendering:
@@ -138,7 +161,7 @@ export const UploadLayerView: React.FC<UploadLayerViewProps> = ({
         />
       ))}
 
-      {showChrome && (
+      {showChrome && !cropping && (
         <SelectionHandles
           scale={scale}
           boxWidth={layer.width}

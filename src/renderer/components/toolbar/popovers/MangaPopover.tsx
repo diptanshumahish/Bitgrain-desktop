@@ -4,6 +4,7 @@ import { Slider } from "../slider";
 import { EditableValue } from "../editable-value";
 import type { TransformMode } from "../../../engine/types";
 import { trackEvent } from "../../../lib/tracker";
+import { ToggleSwitch } from "../controls/ToggleSwitch";
 
 interface MangaPopoverProps {
   mode: TransformMode[];
@@ -20,26 +21,6 @@ interface MangaPopoverProps {
   onClose: () => void;
   static?: boolean;
 }
-
-const ToggleSwitch: React.FC<{ checked: boolean; onChange: () => void }> = ({
-  checked,
-  onChange,
-}) => (
-  <button
-    onClick={onChange}
-    role="switch"
-    aria-checked={checked}
-    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-      checked ? "bg-[var(--s-accent)]" : "bg-[var(--s-bg-input)]"
-    }`}
-  >
-    <span
-      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white transform transition-transform duration-200 ${
-        checked ? "translate-x-4" : "translate-x-0"
-      }`}
-    />
-  </button>
-);
 
 interface RowConfig {
   label: string;
@@ -79,16 +60,16 @@ export const MangaPopover: React.FC<MangaPopoverProps> = ({
   ];
 
   return (
-    <Popover onClose={onClose} className="w-60" static={isStatic}>
+    <Popover onClose={onClose} className="w-64" static={isStatic}>
       <PopoverSection>
         <div className="flex items-center justify-between px-1 pb-1">
           <div>
-            <p className="text-[11px] font-semibold text-[var(--s-text)]">Manga</p>
-            <p className="text-[9px] text-[var(--s-text-subtle)] mt-0.5">
+            <p className="text-[12px] font-semibold text-[var(--s-text)]">Manga</p>
+            <p className="text-[12px] text-[var(--s-text-subtle)] mt-0.5">
               Crosshatch with inked lines
             </p>
           </div>
-          <ToggleSwitch checked={isActive} onChange={onToggle} />
+          <ToggleSwitch checked={isActive} onChange={onToggle} label="Manga" />
         </div>
       </PopoverSection>
 
@@ -99,9 +80,10 @@ export const MangaPopover: React.FC<MangaPopoverProps> = ({
           className={`flex flex-col gap-2.5 px-0.5 pb-0.5 transition-opacity ${!isActive ? "opacity-40 pointer-events-none" : ""}`}
         >
           {rows.map((row) => (
-            <div key={row.label} className="grid grid-cols-[62px_1fr_40px] items-center gap-2">
-              <span className="text-[9px] text-[var(--s-text-subtle)] select-none">{row.label}</span>
+            <div key={row.label} className="grid grid-cols-[84px_1fr_44px] items-center gap-2">
+              <span className="text-[12px] text-[var(--s-text-subtle)] select-none">{row.label}</span>
               <Slider
+                label={row.label}
                 min={row.min}
                 max={row.max}
                 step={row.step}

@@ -15,9 +15,16 @@ interface CanvasBounds {
 }
 
 const INITIAL_SPLIT_PERCENT = 50;
+const FILTERED_DOWNSCALE_MODES: ReadonlySet<string> = new Set(["halftone"]);
+
+const renderingClassFor = (mode: OutputPreviewProps["mode"]): string => {
+  const lastMode = Array.isArray(mode) ? mode[mode.length - 1] : mode;
+  return FILTERED_DOWNSCALE_MODES.has(lastMode) ? "" : "rendering-pixelated";
+};
 
 export const OutputPreview: React.FC<OutputPreviewProps> = (props) => {
   const { image, compareMode = false, transparentBg = false, compact = false } = props;
+  const renderingClass = renderingClassFor(props.mode);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -86,7 +93,7 @@ export const OutputPreview: React.FC<OutputPreviewProps> = (props) => {
         className="relative w-full h-full overflow-hidden select-none"
         onContextMenu={(e) => e.preventDefault()}
       >
-        <canvas ref={canvasRef} className="block w-full h-auto rendering-pixelated" />
+        <canvas ref={canvasRef} className={`block w-full h-auto ${renderingClass}`} />
       </div>
     );
   }
@@ -107,7 +114,7 @@ export const OutputPreview: React.FC<OutputPreviewProps> = (props) => {
       <canvas
         ref={canvasRef}
         id="transformation-output-canvas"
-        className={`max-w-full max-h-full object-contain rendering-pixelated ${transparentBg ? "mix-blend-multiply" : ""}`}
+        className={`max-w-full max-h-full object-contain ${renderingClass} ${transparentBg ? "mix-blend-multiply" : ""}`}
         style={compareMode && canvasBounds ? { clipPath: `inset(0 0 0 ${splitPos}%)` } : undefined}
       />
 

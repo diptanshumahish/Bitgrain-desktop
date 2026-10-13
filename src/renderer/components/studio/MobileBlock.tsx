@@ -1,20 +1,14 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 interface MobileBlockProps {
   onBack: () => void;
-  title?: string;
-  body?: string;
-  backLabel?: string;
+  title: string;
+  body: string;
 }
 
-export const MobileBlock: React.FC<MobileBlockProps> = ({
-  onBack,
-  title = "this part needs a bigger screen",
-  body = "studio and video use a layered canvas built for a desktop pointer. the image editor works right here on your phone, drop a photo and go.",
-  backLabel = "back to home",
-}) => {
+export const MobileBlock: React.FC<MobileBlockProps> = ({ onBack, title, body }) => {
   const navigate = useNavigate();
 
   return (
@@ -36,17 +30,17 @@ export const MobileBlock: React.FC<MobileBlockProps> = ({
       </div>
       <div className="flex flex-col items-center gap-3 mt-1">
         <button
-          onClick={() => navigate("/editor")}
+          onClick={onBack}
           className="flex items-center gap-1.5 bg-[var(--s-accent)] text-[var(--s-accent-text)] border-none rounded-lg cursor-pointer text-[13px] font-bold font-inherit px-5 py-2.5"
         >
-          open the editor
-          <ArrowRight size={15} strokeWidth={2.5} />
+          <ArrowLeft size={15} strokeWidth={2.5} />
+          Back to Bitgrain
         </button>
         <button
-          onClick={onBack}
-          className="text-zinc-500 hover:text-zinc-300 transition-colors text-[12px] font-inherit bg-transparent border-none cursor-pointer"
+          onClick={() => navigate("/editor")}
+          className="text-zinc-400 hover:text-zinc-200 transition-colors text-[13px] font-inherit bg-transparent border-none cursor-pointer"
         >
-          {backLabel}
+          Edit a photo instead
         </button>
       </div>
     </div>

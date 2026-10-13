@@ -17,7 +17,6 @@ export interface ExportPopupData {
   background: string;
   layers: Layer[];
   image: string | null;
-  anchorRect: DOMRect;
   pages?: TemplatePage[];
   activePageId?: string;
 }

@@ -6,11 +6,12 @@ import type { Preset, PresetConfig } from "../../../engine/presets";
 import { PresetCard } from "./PresetCard";
 import { SavePresetRow } from "./SavePresetRow";
 import { trackEvent } from "../../../lib/tracker";
+import { useSignalValue } from "../../../lib/signal";
+import { previewThumbSignal } from "../../../store/preview-thumb-store";
 
 export type { PresetConfig, Preset };
 export { GOAL_PRESETS, PRESETS };
 
-const PREVIEW_IMAGE = "/sample.jpg";
 const ALL_PRESETS = [...GOAL_PRESETS, ...PRESETS];
 
 interface PresetsPopoverProps {
@@ -32,6 +33,7 @@ export const PresetsPopover: React.FC<PresetsPopoverProps> = ({
   onSaveCustomPreset,
   onDeleteCustomPreset,
 }) => {
+  const thumb = useSignalValue(previewThumbSignal);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -71,7 +73,7 @@ export const PresetsPopover: React.FC<PresetsPopoverProps> = ({
           placeholder="Search presets..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="flex-1 text-[11px] bg-transparent outline-none text-[var(--s-text)] placeholder:text-[var(--s-text-subtle)]"
+          className="flex-1 text-[12px] bg-transparent outline-none text-[var(--s-text)] placeholder:text-[var(--s-text-subtle)]"
         />
       </div>
     </div>
@@ -83,15 +85,15 @@ export const PresetsPopover: React.FC<PresetsPopoverProps> = ({
   const grid = (
     <div className={`grid ${gridCols} gap-2`}>
       {filteredPresets.length === 0 ? (
-        <p className={`${colSpan} text-[11px] text-zinc-400 py-4 text-center`}>
+        <p className={`${colSpan} text-[12px] text-zinc-400 py-4 text-center`}>
           No presets match your search.
         </p>
       ) : (
         filteredPresets.map((p) => (
           <PresetCard
-            key={p.name}
+            key={`${p.name}-${thumb.id}`}
             preset={p}
-            image={PREVIEW_IMAGE}
+            image={thumb.src}
             onApply={() => handleApply(p.config, p.name)}
           />
         ))
@@ -101,21 +103,21 @@ export const PresetsPopover: React.FC<PresetsPopoverProps> = ({
 
   const myPresets = (
     <div className="p-3 pt-0">
-      <p className="text-[10px] font-semibold text-[var(--s-text-subtle)] mb-1.5     ">
+      <p className="text-[12px] font-semibold text-[var(--s-text-subtle)] mb-1.5     ">
         My presets
       </p>
       {filteredCustomPresets.length === 0 && !saving && (
-        <p className="text-[10px] text-[var(--s-text-subtle)] mb-1.5 italic">
+        <p className="text-[12px] text-[var(--s-text-subtle)] mb-1.5 italic">
           No saved presets yet.
         </p>
       )}
       {filteredCustomPresets.length > 0 && (
         <div className={`grid ${gridCols} gap-2 mb-2`}>
           {filteredCustomPresets.map((p) => (
-            <div key={p.name} className="relative group">
+            <div key={`${p.name}-${thumb.id}`} className="relative group">
               <PresetCard
                 preset={p}
-                image={PREVIEW_IMAGE}
+                image={thumb.src}
                 onApply={() => handleApply(p.config, p.name)}
               />
               <button
@@ -133,7 +135,7 @@ export const PresetsPopover: React.FC<PresetsPopoverProps> = ({
       ) : (
         <button
           onClick={() => setSaving(true)}
-          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-[var(--s-text-subtle)] hover:text-[var(--s-accent)] hover:bg-[var(--s-accent-soft)] transition-all"
+          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[12px] font-medium text-[var(--s-text-subtle)] hover:text-[var(--s-accent)] hover:bg-[var(--s-accent-soft)] transition-all"
         >
           <Plus size={11} strokeWidth={2.5} /> Save current as preset
         </button>

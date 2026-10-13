@@ -5,6 +5,8 @@ import { EditableValue } from "../editable-value";
 import type { TransformMode } from "../../../engine/types";
 import type { RGB } from "../../../store/transform-store";
 import { trackEvent } from "../../../lib/tracker";
+import { ToggleSwitch } from "../controls/ToggleSwitch";
+import { POPART_MAX_CELL, POPART_MIN_CELL } from "../../../engine/plugins/popart/popart-defaults";
 
 interface PopArtPopoverProps {
   mode: TransformMode[];
@@ -51,26 +53,6 @@ const hexToRgb = (hex: string): RGB => {
 
 const rgbEq = (a: RGB, b: RGB): boolean => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
 
-const ToggleSwitch: React.FC<{ checked: boolean; onChange: () => void }> = ({
-  checked,
-  onChange,
-}) => (
-  <button
-    onClick={onChange}
-    role="switch"
-    aria-checked={checked}
-    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-      checked ? "bg-[var(--s-accent)]" : "bg-[var(--s-bg-input)]"
-    }`}
-  >
-    <span
-      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white transform transition-transform duration-200 ${
-        checked ? "translate-x-4" : "translate-x-0"
-      }`}
-    />
-  </button>
-);
-
 export const PopArtPopover: React.FC<PopArtPopoverProps> = ({
   mode,
   onToggle,
@@ -104,11 +86,12 @@ export const PopArtPopover: React.FC<PopArtPopoverProps> = ({
     suffix: string,
     eventName: string,
   ) => (
-    <div className="grid grid-cols-[72px_1fr_44px] items-center gap-2">
-      <span className="text-[9px] text-[var(--s-text-subtle)] select-none">
+    <div className="grid grid-cols-[84px_1fr_44px] items-center gap-2">
+      <span className="text-[12px] text-[var(--s-text-subtle)] select-none">
         {label}
       </span>
       <Slider
+        label={label}
         min={min}
         max={max}
         step={step}
@@ -149,8 +132,8 @@ export const PopArtPopover: React.FC<PopArtPopoverProps> = ({
     onChange: (v: RGB) => void,
     eventName: string,
   ) => (
-    <div className="grid grid-cols-[72px_1fr_44px] items-center gap-2">
-      <span className="text-[9px] text-[var(--s-text-subtle)] select-none">
+    <div className="grid grid-cols-[84px_1fr_44px] items-center gap-2">
+      <span className="text-[12px] text-[var(--s-text-subtle)] select-none">
         {label}
       </span>
       <input
@@ -163,7 +146,7 @@ export const PopArtPopover: React.FC<PopArtPopoverProps> = ({
         }}
         className="h-6 w-full rounded border border-[var(--s-border)] bg-transparent cursor-pointer"
       />
-      <span className="text-[9px] text-right tabular-nums text-[var(--s-text-subtle)] select-none">
+      <span className="text-[12px] text-right tabular-nums text-[var(--s-text-subtle)] select-none">
         {rgbToHex(value)}
       </span>
     </div>
@@ -174,14 +157,14 @@ export const PopArtPopover: React.FC<PopArtPopoverProps> = ({
       <PopoverSection>
         <div className="flex items-center justify-between px-1 pb-1">
           <div>
-            <p className="text-[11px] font-semibold text-[var(--s-text)]">
+            <p className="text-[12px] font-semibold text-[var(--s-text)]">
               Pop Grunge
             </p>
-            <p className="text-[9px] text-[var(--s-text-subtle)] mt-0.5">
+            <p className="text-[12px] text-[var(--s-text-subtle)] mt-0.5">
               Halftone with grit
             </p>
           </div>
-          <ToggleSwitch checked={isActive} onChange={onToggle} />
+          <ToggleSwitch checked={isActive} onChange={onToggle} label="Pop art" />
         </div>
       </PopoverSection>
 
@@ -202,7 +185,7 @@ export const PopArtPopover: React.FC<PopArtPopoverProps> = ({
                   onStateChangeFinished();
                   trackEvent("popart", "theme_changed", { details: { theme: t.id } });
                 }}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-medium transition-all ${
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-[12px] font-medium transition-all ${
                   selected
                     ? "border-[var(--s-accent)] bg-[var(--s-accent-soft)] text-[var(--s-text)]"
                     : "border-[var(--s-border)] text-[var(--s-text-muted)] hover:border-[var(--s-accent)]"
@@ -235,7 +218,7 @@ export const PopArtPopover: React.FC<PopArtPopoverProps> = ({
           {colorRow("Paper", popartPaper, setPopartPaper, "paper_changed")}
           <button
             onClick={swapInkPaper}
-            className="text-[10px] font-medium text-[var(--s-text-muted)] hover:text-[var(--s-accent)] self-start px-1"
+            className="text-[12px] font-medium text-[var(--s-text-muted)] hover:text-[var(--s-accent)] self-start px-1"
           >
             ⇄ swap ink + paper
           </button>
@@ -248,7 +231,7 @@ export const PopArtPopover: React.FC<PopArtPopoverProps> = ({
         <div
           className={`flex flex-col gap-2.5 px-0.5 pb-0.5 transition-opacity ${!isActive ? "opacity-40 pointer-events-none" : ""}`}
         >
-          {sliderRow("Cell size", popartCell, 2, 24, 1, setPopartCell, "px", "cell_changed")}
+          {sliderRow("Dot size", popartCell, POPART_MIN_CELL, POPART_MAX_CELL, 1, setPopartCell, "px", "cell_changed")}
           {sliderRow("Angle", popartAngle, 0, 90, 5, setPopartAngle, "°", "angle_changed")}
           {sliderRow("Threshold", popartThreshold, 0.1, 0.9, 0.05, setPopartThreshold, "", "threshold_changed")}
           {sliderRow("Grain", popartGrain, 0, 1, 0.05, setPopartGrain, "", "grain_changed")}

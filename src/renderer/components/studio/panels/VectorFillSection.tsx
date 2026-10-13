@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
-import { Upload, X } from "lucide-react";
+import { Ban, Image as ImageIcon, PaintBucket, Upload, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type {
   VectorLayer,
   VectorFillImage,
@@ -8,6 +9,8 @@ import type {
 import { ColorPicker } from "../ui/ColorPicker";
 import { BtnGroup } from "../ui/panelPrimitives";
 import { processImageFile } from "../../../utils/image-utils";
+import { PanelGroup } from "../ui/panel-group";
+import { HeaderIconButton } from "../ui/HeaderIconButton";
 
 type FillMode = "none" | "color" | "image";
 
@@ -22,6 +25,12 @@ const FIT_OPTIONS: { label: string; value: VectorFillFit }[] = [
   { label: "Cover", value: "cover" },
   { label: "Contain", value: "contain" },
   { label: "Stretch", value: "stretch" },
+];
+
+const MODE_BUTTONS: { mode: FillMode; Icon: LucideIcon; title: string }[] = [
+  { mode: "none", Icon: Ban, title: "No fill" },
+  { mode: "color", Icon: PaintBucket, title: "Color fill" },
+  { mode: "image", Icon: ImageIcon, title: "Image fill" },
 ];
 
 const resolveMode = (layer: VectorLayer): FillMode => {
@@ -78,20 +87,18 @@ export const VectorFillSection: React.FC<VectorFillSectionProps> = ({
     onChange({ fillImage: undefined });
   };
 
+  const modeButtons = MODE_BUTTONS.map(({ mode: buttonMode, Icon, title }) => (
+    <HeaderIconButton key={buttonMode} title={title} active={mode === buttonMode} onClick={() => setMode(buttonMode)}>
+      <Icon size={13} strokeWidth={1.75} />
+    </HeaderIconButton>
+  ));
+
   return (
-    <div className="flex flex-col gap-2">
-      <BtnGroup
-        options={[
-          { label: "None", value: "none" },
-          { label: "Color", value: "color" },
-          { label: "Image", value: "image" },
-        ]}
-        value={mode}
-        onChange={(value) => setMode(value as FillMode)}
-      />
+    <PanelGroup title="Fill" actions={modeButtons}>
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
 
       {mode === "color" && (
-        <div className="mt-2">
+        <div>
           <ColorPicker
             color={layer.fill}
             varId={layer.fillVar}
@@ -102,20 +109,13 @@ export const VectorFillSection: React.FC<VectorFillSectionProps> = ({
       )}
 
       {mode === "image" && (
-        <div className="flex flex-col gap-2 mt-2">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFile}
-          />
-
+        <div className="flex flex-col gap-2">
           {layer.fillImage ? (
             <div className="relative w-full aspect-square rounded-md border border-[var(--s-border)] overflow-hidden bg-[var(--s-bg-input)]">
               <img
                 src={layer.fillImage.src}
                 alt="Fill preview"
+                draggable={false}
                 className="absolute inset-0 w-full h-full object-contain"
               />
               <button
@@ -160,6 +160,6 @@ export const VectorFillSection: React.FC<VectorFillSectionProps> = ({
           )}
         </div>
       )}
-    </div>
+    </PanelGroup>
   );
 };

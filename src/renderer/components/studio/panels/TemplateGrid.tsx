@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { Search, Lock, ChevronDown, ChevronRight, History } from "lucide-react";
+import { Search, ChevronDown, ChevronRight, History } from "lucide-react";
 import type { TemplateDef } from "../../../data/studioTypes";
-import { TemplateThumbnail } from "../../templates/TemplateThumbnail";
 import { userSignal } from "../../../hooks/useAuth";
 import { useSignalValue } from "../../../lib/signal";
 import { emitModal } from "../../../lib/event-bus";
@@ -14,6 +13,12 @@ import {
 } from "../../../store/templates-store";
 import { useIntersectionObserver } from "../../../hooks/useIntersectionObserver";
 import { trackEvent } from "../../../lib/tracker";
+import { trackTemplateClick } from "../../../modules/tracking/track-template-click";
+import { StudioThumbGrid } from "./template-grid/StudioThumbGrid";
+import { CategorySection } from "./template-grid/CategorySection";
+import { TemplatesNetworkNotice } from "../../templates/network/TemplatesNetworkNotice";
+import type { TemplateSummary } from "../../../lib/template-cards/template-summary";
+import { fetchFullTemplate } from "../../../lib/template-cards/full-template-cache";
 
 const CATEGORIES: Array<{ key: string; label: string }> = [
   { key: "album", label: "Album" },
@@ -23,72 +28,28 @@ const CATEGORIES: Array<{ key: string; label: string }> = [
   { key: "frame", label: "Frame" },
   { key: "invitation", label: "Invitation" },
   { key: "certificate", label: "Certificate" },
-  { key: "id-card", label: "ID Card" },
-  { key: "grade-card", label: "Grade Card" },
-  { key: "grand-opening", label: "Grand Opening" },
+  { key: "id-card", label: "ID card" },
+  { key: "grade-card", label: "Grade card" },
+  { key: "grand-opening", label: "Grand opening" },
+  { key: "letterhead", label: "Letterhead" },
+  { key: "menu", label: "Menu" },
+  { key: "business-card", label: "Business card" },
+  { key: "flyer", label: "Flyer" },
+  { key: "book-cover", label: "Book cover" },
+  { key: "thumbnail", label: "Thumbnail" },
+  { key: "banner", label: "Banner" },
+  { key: "planner", label: "Planner" },
+  { key: "packaging", label: "Packaging" },
+  { key: "app-screenshot", label: "App screenshot" },
+  { key: "business-docs", label: "Business docs" },
+  { key: "sports", label: "Sports" },
+  { key: "stream-kit", label: "Stream kit" },
+  { key: "signage", label: "Signage" },
+  { key: "ticket", label: "Ticket" },
+  { key: "greeting", label: "Greeting" },
+  { key: "link-preview", label: "Link preview" },
+  { key: "recipe-card", label: "Recipe card" },
 ];
-
-interface TemplateThumbProps {
-  template: TemplateDef;
-  selected: boolean;
-  index: number;
-  locked: boolean;
-  onClick: () => void;
-}
-
-const TemplateThumb: React.FC<TemplateThumbProps> = ({
-  template,
-  selected,
-  locked,
-  onClick,
-}) => (
-  <button
-    onClick={onClick}
-    title={template.name}
-    className="group flex flex-col items-stretch gap-1.5 bg-transparent border-none cursor-pointer p-0 w-full text-left break-inside-avoid mb-4"
-  >
-    <div
-      className={`w-full relative overflow-hidden transition-all duration-200 rounded-sm ${
-        selected
-          ? "ring-2 ring-[var(--s-accent)] ring-offset-2 ring-offset-[var(--s-bg-panel)]"
-          : "border border-[var(--s-border)] hover:border-[var(--s-text)] hover:-translate-y-0.5"
-      }`}
-      style={{
-        aspectRatio: `${template.width} / ${template.height}`,
-      }}
-    >
-      <TemplateThumbnail template={template} />
-
-      {selected && (
-        <div className="absolute top-2 right-2 bg-[var(--s-accent)] text-[var(--s-accent-text)] text-[9px] px-2 py-0.5 font-semibold rounded-sm">
-          ACTIVE
-        </div>
-      )}
-
-      {locked && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/50 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <Lock size={14} className="text-white" />
-          <span className="text-[9px] text-white font-bold">Unlock (Free)</span>
-        </div>
-      )}
-    </div>
-
-    <div className="flex items-center justify-between gap-2 mt-1 px-0.5">
-      <span
-        className={`text-[10px] truncate font-medium flex-1 transition-colors duration-150 ${
-          selected
-            ? "text-[var(--s-accent)]"
-            : "text-[var(--s-text-subtle)] group-hover:text-[var(--s-text)]"
-        }`}
-      >
-        {template.name}
-      </span>
-      {locked && (
-        <Lock size={8} className="text-[var(--s-text-muted)] shrink-0" />
-      )}
-    </div>
-  </button>
-);
 
 interface TemplateGridProps {
   selectedId: string;
@@ -112,34 +73,17 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
     if (!isLoading) loadMoreTemplates();
   }, [isLoading]);
 
-  const sentinelRef = useIntersectionObserver(
-    handleLoadMore,
-    hasMore && !query,
-  );
+  const sentinelRef = useIntersectionObserver(handleLoadMore, hasMore && !!query);
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     const stored = localStorage.getItem("imgi-recent-templates");
     const hasRecents = stored ? JSON.parse(stored).length > 0 : false;
 
-    if (hasRecents) {
-      CATEGORIES.forEach((cat) => {
-        initial[cat.key] = true;
-      });
-    } else {
-      let foundFirst = false;
-      CATEGORIES.forEach((cat) => {
-        const hasItems = templatesSignal.value.some(
-          (t) => t.category === cat.key,
-        );
-        if (hasItems && !foundFirst) {
-          foundFirst = true;
-        } else {
-          initial[cat.key] = true;
-        }
-      });
-      initial.recent = true;
-    }
+    CATEGORIES.forEach((cat, index) => {
+      initial[cat.key] = hasRecents || index > 0;
+    });
+    initial.recent = !hasRecents;
     return initial;
   });
 
@@ -152,8 +96,10 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
   const isLocalhost = window.location.hostname === "localhost";
   const isLocked = !user && !isLocalhost;
 
-  const handleSelect = (t: TemplateDef) => {
-    if (!user && !t.free && !isLocalhost) {
+  const handleSelect = async (t: TemplateSummary): Promise<void> => {
+    const locked = !user && !t.isFree && !isLocalhost;
+    trackTemplateClick({ template: t, placement: "studio_panel", locked, signedIn: !!user });
+    if (locked) {
       emitModal({ type: "login", reason: "templates" });
       return;
     }
@@ -166,7 +112,8 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
     localStorage.setItem("imgi-recent-templates", JSON.stringify(nextRecents));
 
     trackEvent("studio", "template_selected", { details: { template_id: t.id, name: t.name, category: t.category } });
-    onSelect(t);
+    const full = await fetchFullTemplate(t.id);
+    if (full) onSelect(full);
   };
 
   const toggleCollapse = (key: string) => {
@@ -186,7 +133,7 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
 
   const recentTemplates = recentIds
     .map((id) => templates.find((t) => t.id === id))
-    .filter((t): t is TemplateDef => !!t);
+    .filter((t): t is TemplateSummary => !!t);
 
   return (
     <div className="flex flex-col select-none">
@@ -204,12 +151,13 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
+        <TemplatesNetworkNotice theme="studio" className="mx-3.5 mt-3" />
         {searchResults ? (
           <div className="px-3.5 pt-4 pb-8">
             <div className="flex items-center gap-2 mb-4">
               <div className="h-px flex-1 bg-[var(--s-border)]" />
               <span className="text-[9px] font-bold text-[var(--s-text-muted)]">
-                {searchResults.length} Results
+                {searchResults.length} results
               </span>
               <div className="h-px flex-1 bg-[var(--s-border)]" />
             </div>
@@ -221,19 +169,14 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
                 </p>
               </div>
             ) : (
-              <div className="columns-2 gap-3">
-                {searchResults.map((t, i) => (
-                  <TemplateThumb
-                    key={t.id}
-                    template={t}
-                    index={i + 1}
-                    selected={t.id === selectedId}
-                    locked={isLocked && !t.free}
-                    onClick={() => handleSelect(t)}
-                  />
-                ))}
-              </div>
+              <StudioThumbGrid
+                templates={searchResults}
+                selectedId={selectedId}
+                isLocked={isLocked}
+                onSelect={(template) => void handleSelect(template)}
+              />
             )}
+            <div ref={sentinelRef} className="h-8" />
           </div>
         ) : (
           <div className="pb-8">
@@ -246,7 +189,7 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
                   <div className="flex items-center gap-2">
                     <History size={11} className="text-[var(--s-accent)]" />
                     <span className="text-[10px] font-bold text-[var(--s-text)]">
-                      Recently Opened
+                      Recently opened
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
@@ -267,75 +210,29 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
                   </div>
                 </button>
                 {!collapsed.recent && (
-                  <div className="columns-2 gap-3 px-3.5 pb-4 animate-in fade-in slide-in-from-top-1 duration-200">
-                    {recentTemplates.map((t, i) => (
-                      <TemplateThumb
-                        key={`recent-${t.id}`}
-                        template={t}
-                        index={i + 1}
-                        selected={t.id === selectedId}
-                        locked={isLocked && !t.free}
-                        onClick={() => handleSelect(t)}
-                      />
-                    ))}
-                  </div>
+                  <StudioThumbGrid
+                    templates={recentTemplates}
+                    selectedId={selectedId}
+                    isLocked={isLocked}
+                    onSelect={(template) => void handleSelect(template)}
+                    className="px-3.5 pb-4 animate-in fade-in slide-in-from-top-1 duration-200"
+                  />
                 )}
               </div>
             )}
 
-            {CATEGORIES.map(({ key, label }) => {
-              const group = templates.filter((t) => t.category === key);
-              if (!group.length) return null;
-              const isCollapsed = collapsed[key];
-
-              return (
-                <div
-                  key={key}
-                  className="border-b border-[var(--s-border)] last:border-none"
-                >
-                  <button
-                    onClick={() => toggleCollapse(key)}
-                    className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-white/[0.02] transition-colors group"
-                  >
-                    <span className="text-[10px] font-bold text-[var(--s-text-subtle)] group-hover:text-[var(--s-text)] transition-colors">
-                      {label}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[9px]   text-[var(--s-text-muted)]">
-                        {group.length}
-                      </span>
-                      {isCollapsed ? (
-                        <ChevronRight
-                          size={12}
-                          className="text-[var(--s-text-muted)]"
-                        />
-                      ) : (
-                        <ChevronDown
-                          size={12}
-                          className="text-[var(--s-text-muted)]"
-                        />
-                      )}
-                    </div>
-                  </button>
-                  {!isCollapsed && (
-                    <div className="columns-2 gap-3 px-3.5 pb-4 animate-in fade-in slide-in-from-top-1 duration-200">
-                      {group.map((t, i) => (
-                        <TemplateThumb
-                          key={t.id}
-                          template={t}
-                          index={i + 1}
-                          selected={t.id === selectedId}
-                          locked={isLocked && !t.free}
-                          onClick={() => handleSelect(t)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            <div ref={sentinelRef} className="h-8" />
+            {CATEGORIES.map(({ key, label }) => (
+              <CategorySection
+                key={key}
+                categoryKey={key}
+                label={label}
+                collapsed={collapsed[key] ?? false}
+                selectedId={selectedId}
+                isLocked={isLocked}
+                onToggle={toggleCollapse}
+                onSelect={(template) => void handleSelect(template)}
+              />
+            ))}
           </div>
         )}
       </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X, BookOpen } from "lucide-react";
 import { useSignalValue } from "../../lib/signal";
 import { imageSignal } from "../../store/image-store";
 import { extractImagePalette } from "../../utils/extract-image-palette";
@@ -50,12 +50,22 @@ export const ColorStudioModal: React.FC<{ onClose: () => void }> = ({ onClose })
       >
         <div className="flex items-center justify-between px-5 h-12 border-b border-[var(--s-border)] shrink-0">
           <span className="text-[14px] font-semibold text-[var(--s-text)]">Color studio</span>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--s-text-muted)] hover:bg-[var(--s-bg-input)] transition-colors"
-          >
-            <X size={15} strokeWidth={2} />
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="/docs/05-studio-advanced/06-color-tools"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2 h-7 rounded-md text-[11px] font-medium text-[var(--s-text-muted)] hover:bg-[var(--s-bg-input)] hover:text-[var(--s-text)] transition-colors no-underline"
+            >
+              <BookOpen size={12} /> Guide
+            </a>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--s-text-muted)] hover:bg-[var(--s-bg-input)] transition-colors"
+            >
+              <X size={15} strokeWidth={2} />
+            </button>
+          </div>
         </div>
 
         {!imageUrl ? (

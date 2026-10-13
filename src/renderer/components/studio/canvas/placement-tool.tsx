@@ -37,6 +37,8 @@ interface PlacementToolOverlayProps {
   canvasH: number;
   zoom: number;
   isSpacePressed: () => boolean;
+  isActivePage: boolean;
+  onActivatePage: () => void;
   onPlace: (placement: LayerPlacement) => void;
 }
 
@@ -46,6 +48,8 @@ export const PlacementToolOverlay: React.FC<PlacementToolOverlayProps> = ({
   canvasH,
   zoom,
   isSpacePressed,
+  isActivePage,
+  onActivatePage,
   onPlace,
 }) => {
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -66,13 +70,14 @@ export const PlacementToolOverlay: React.FC<PlacementToolOverlayProps> = ({
       if (isSpacePressed() || event.button !== 0) return;
       event.stopPropagation();
       event.preventDefault();
+      if (!isActivePage) onActivatePage();
       overlayRef.current!.setPointerCapture(event.pointerId);
       pointerIdRef.current = event.pointerId;
       const point = toCanvas(event.clientX, event.clientY);
       startRef.current = point;
       setRect({ x: point.x, y: point.y, width: 0, height: 0 });
     },
-    [isSpacePressed, toCanvas],
+    [isSpacePressed, isActivePage, onActivatePage, toCanvas],
   );
 
   const handlePointerMove = useCallback(
@@ -101,8 +106,8 @@ export const PlacementToolOverlay: React.FC<PlacementToolOverlayProps> = ({
 
   const previewClass =
     tool.kind === "shape" && tool.shapeType === "circle"
-      ? "absolute border border-[var(--s-accent)] bg-[var(--s-accent)]/10 rounded-full pointer-events-none"
-      : "absolute border border-[var(--s-accent)] bg-[var(--s-accent)]/10 pointer-events-none";
+      ? "absolute border border-[var(--s-canvas-selection)] bg-[var(--s-canvas-selection)]/10 rounded-full pointer-events-none"
+      : "absolute border border-[var(--s-canvas-selection)] bg-[var(--s-canvas-selection)]/10 pointer-events-none";
 
   return (
     <div

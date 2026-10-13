@@ -47,6 +47,7 @@ const LEGACY_PLAN_ALIASES: Record<string, string> = {
   studio: "pro",
   "studio-pro": "pro",
   "pro-license-10yr": "pro",
+  "pro-monthly": "pro",
   creator: "pro",
   "creator-monthly": "pro",
   "creator-yearly": "pro",

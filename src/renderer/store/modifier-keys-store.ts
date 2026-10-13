@@ -1,13 +1,9 @@
-import { signal, useSignalValue } from "../lib/signal";
+import { signal } from "../lib/signal";
 
 const shiftHeld = signal(false);
 
 export function isShiftHeld(): boolean {
   return shiftHeld.value;
-}
-
-export function useShiftHeld(): boolean {
-  return useSignalValue(shiftHeld);
 }
 
 export function initModifierKeys(): () => void {

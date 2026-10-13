@@ -39,7 +39,7 @@ export const PalettePopover: React.FC<PalettePopoverProps> = ({
         <div className="max-h-44 overflow-y-auto">
           <button
             onClick={() => setPalette(null)}
-            className={`flex items-center w-full px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+            className={`flex items-center w-full px-2 py-1.5 rounded-lg text-[12px] font-medium transition-all ${
               !palette ? "bg-[var(--s-accent)] text-[var(--s-accent-text)]" : "text-[var(--s-text-muted)] hover:bg-[var(--s-bg-input-hover)]"
             }`}
           >
@@ -49,7 +49,7 @@ export const PalettePopover: React.FC<PalettePopoverProps> = ({
             <button
               key={p.id}
               onClick={() => setPalette(p)}
-              className={`flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all text-left ${
+              className={`flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-[12px] font-medium transition-all text-left ${
                 palette?.id === p.id ? "bg-[var(--s-accent)] text-[var(--s-accent-text)]" : "text-[var(--s-text-muted)] hover:bg-[var(--s-bg-input-hover)]"
               }`}
             >
@@ -68,7 +68,7 @@ export const PalettePopover: React.FC<PalettePopoverProps> = ({
         </div>
         <button
           onClick={handleAura}
-          className="mt-1 w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold bg-[var(--s-bg-input)] hover:bg-[var(--s-bg-input-hover)] text-[var(--s-text-subtle)] transition-all"
+          className="mt-1 w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[12px] font-semibold bg-[var(--s-bg-input)] hover:bg-[var(--s-bg-input-hover)] text-[var(--s-text-subtle)] transition-all"
         >
           <Pipette size={10} /> Generate from image
         </button>

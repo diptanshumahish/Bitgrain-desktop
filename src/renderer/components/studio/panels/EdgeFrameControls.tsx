@@ -1,7 +1,8 @@
 import React from "react";
+import { PanelGroup } from "../ui/panel-group";
 import { Shuffle } from "lucide-react";
 import type { EdgeStyle, TornEdgeEffect, TornEdgeSides } from "../../../data/studioTypes";
-import { Section, ScrubField, Toggle, SmallBtn } from "../ui/panelPrimitives";
+import { ScrubField, Toggle, SmallBtn } from "../ui/panelPrimitives";
 import { Dropdown } from "../ui/dropdown";
 import { ColorPicker } from "../ui/ColorPicker";
 import { defaultTornEdge, hashStringSeed } from "../../../utils/torn-edge";
@@ -46,9 +47,9 @@ export const EdgeFrameControls: React.FC<EdgeFrameControlsProps> = ({ effect, la
   };
 
   return (
-    <Section
+    <PanelGroup
       title="Edge & frame"
-      right={<Toggle value={Boolean(effect)} onChange={handleToggle} />}
+      actions={<Toggle value={Boolean(effect)} onChange={handleToggle} />}
     >
       {effect && (
         <div className="flex flex-col gap-2 pt-0.5">
@@ -101,6 +102,6 @@ export const EdgeFrameControls: React.FC<EdgeFrameControlsProps> = ({ effect, la
           </div>
         </div>
       )}
-    </Section>
+    </PanelGroup>
   );
 };

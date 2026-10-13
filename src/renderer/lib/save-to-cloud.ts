@@ -1,20 +1,29 @@
 import { userSignal } from "../hooks/useAuth";
 import { accountCreditsSignal } from "../store/user-credits-store";
 import { getPlanLimits } from "../config/plan-limits";
-import { createProject, updateProject, type ServerProject } from "./projects-api";
+import { createProject, putProject, type ServerProject } from "./projects-api";
 
 type CloudProjectPayload = Partial<ServerProject> & { id: string };
 
-const planAllowsCloudCreate = (): boolean => {
+export type CloudSyncOutcome = "saved" | "not_synced" | "failed";
+
+export const planAllowsCloudCreate = (): boolean => {
   const account = accountCreditsSignal.value;
   if (!account) return true;
   return getPlanLimits(account.plan).cloudSync;
 };
 
-export async function saveToCloud(project: CloudProjectPayload): Promise<boolean> {
-  if (!userSignal.value) return false;
-  if (await updateProject(project.id, project)) return true;
-  if (!planAllowsCloudCreate()) return false;
-  const created = await createProject(project);
-  return created !== null;
+const createInCloud = async (project: CloudProjectPayload): Promise<CloudSyncOutcome> => {
+  if (!planAllowsCloudCreate()) return "not_synced";
+  if (await createProject(project)) return "saved";
+  const retried = await putProject(project.id, project);
+  return retried.kind === "ok" ? "saved" : "failed";
+};
+
+export async function syncToCloud(project: CloudProjectPayload): Promise<CloudSyncOutcome> {
+  if (!userSignal.value) return "not_synced";
+  const updated = await putProject(project.id, project);
+  if (updated.kind === "ok") return "saved";
+  if (updated.kind === "failed") return "failed";
+  return createInCloud(project);
 }

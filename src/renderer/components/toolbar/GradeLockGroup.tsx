@@ -21,8 +21,8 @@ export const GradeLockGroup: React.FC<GradeLockGroupProps> = ({
     </div>
     {locked && (
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/grade:block z-[60] pointer-events-none">
-        <div className="bg-[var(--s-border-strong)] text-[var(--s-bg-panel)] text-[9px] font-medium px-2 py-1 rounded-md whitespace-nowrap leading-tight">
-          Remove color grade to edit effects
+        <div className="bg-[var(--s-border-strong)] text-[var(--s-bg-panel)] text-[12px] font-medium px-2 py-1 rounded-md whitespace-nowrap leading-tight">
+          Turn off the film grade to edit this
         </div>
         <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-[4px] border-transparent border-t-[var(--s-border-strong)]" />
       </div>

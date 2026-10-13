@@ -53,8 +53,8 @@ export const LayerRow: React.FC<LayerRowProps> = ({
         onDragEnd={onDragEnd}
         onClick={(e) => onClick(e, visualIdx, layer.id)}
         onContextMenu={(e) => onContextMenu(e, layer.id)}
-        className={`group mx-1 flex items-center gap-2 rounded-md py-1 pl-2 pr-1.5 cursor-pointer transition-colors duration-100 ${
-          isSelected ? "bg-[var(--s-accent-soft)]" : "hover:bg-[var(--s-bg-input)]"
+        className={`group mr-1 flex items-center gap-2 rounded-sm py-1  pr-1.5 cursor-pointer transition-colors duration-100 ${
+          isSelected ? "bg-[var(--s-bg-input-hover)]" : "hover:bg-[var(--s-bg-input)]"
         } ${isDragging ? "opacity-40" : "opacity-100"}`}
       >
         {isContainer ? (
@@ -130,7 +130,7 @@ export const LayerRow: React.FC<LayerRowProps> = ({
       </div>
 
       {isContainer && isExpanded && (
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-0.5 mt-0.5">
           {[...(layer as GroupLayer | FrameLayer).layers].reverse().map((child) => (
             <ChildRow
               key={child.id}

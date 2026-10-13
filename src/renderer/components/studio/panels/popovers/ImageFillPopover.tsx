@@ -45,7 +45,7 @@ export const ImageFillPopover: React.FC<ImageFillPopoverProps> = ({
         {currentSrc && (
           <div className="px-3 pt-3">
             <div className="w-full aspect-video rounded-lg border border-[var(--s-border)] overflow-hidden bg-[var(--s-bg-input)]">
-              <img src={resolveAssetUrl(currentSrc) ?? currentSrc} className="w-full h-full object-contain" alt="Current" />
+              <img src={resolveAssetUrl(currentSrc) ?? currentSrc} draggable={false} className="w-full h-full object-contain" alt="Current" />
             </div>
           </div>
         )}

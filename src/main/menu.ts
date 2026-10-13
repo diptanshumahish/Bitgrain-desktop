@@ -158,65 +158,22 @@ export function updateMenuContext(context: MenuContext): void {
   installApplicationMenu();
 }
 
-// Native right-click menu. Built fresh on every open so it reflects the current
-// surface. Editing roles work on the focused element with no renderer
-// coordination; the dev-only items appear when a dev server is running.
+// Native right-click menu. Like a native app, there is no menu on empty chrome
+// or canvas (surfaces draw their own in-app menus, e.g. studio layers); only text
+// fields and selected text get the standard clipboard menu.
 export function installContextMenu(window: BrowserWindow): void {
-  const isDev = !!process.env["ELECTRON_RENDERER_URL"];
-
   window.webContents.on("context-menu", (_event, params) => {
+    const { editFlags } = params;
     const items: MenuItemConstructorOptions[] = [];
-
-    // 1. Clipboard / editing on the focused element.
-    if (params.isEditable || params.editFlags.canCopy) {
-      if (params.editFlags.canCut) items.push({ role: "cut" });
-      if (params.editFlags.canCopy) items.push({ role: "copy" });
-      if (params.editFlags.canPaste) items.push({ role: "paste" });
-      if (params.editFlags.canSelectAll) items.push({ role: "selectAll" });
+    if (params.isEditable) {
+      items.push({ role: "cut", enabled: editFlags.canCut });
+      items.push({ role: "copy", enabled: editFlags.canCopy });
+      items.push({ role: "paste", enabled: editFlags.canPaste });
       items.push({ type: "separator" });
+      items.push({ role: "selectAll", enabled: editFlags.canSelectAll });
+    } else if (params.selectionText.trim() && editFlags.canCopy) {
+      items.push({ role: "copy" });
     }
-
-    // 2. History — dispatched to the OS roles, which the focused surface honours.
-    items.push({ role: "undo" });
-    items.push({ role: "redo" });
-    items.push({ type: "separator" });
-
-    // 3. New document (always available).
-    items.push({
-      label: "New",
-      submenu: [
-        { label: "Darkroom", accelerator: "CmdOrCtrl+N", click: cmd("new-darkroom") },
-        { label: "Studio", accelerator: "CmdOrCtrl+Shift+N", click: cmd("new-studio") },
-        { label: "Video", accelerator: "CmdOrCtrl+Alt+N", click: cmd("new-video") },
-      ],
-    });
-
-    // 4. Document + export commands the active surface actually supports.
-    const fileItems = surfaceFileItems();
-    if (fileItems.length) {
-      items.push({ type: "separator" });
-      items.push(...fileItems);
-    }
-
-    // 5. Canvas commands the active surface actually supports.
-    const viewItems = surfaceViewItems();
-    if (viewItems.length) items.push(...viewItems);
-
-    // 6. Help + reveal (always available).
-    items.push({ type: "separator" });
-    items.push({ label: "Documentation", click: () => void shell.openExternal(DOCS_URL) });
-    items.push({ label: "Report a Bug", click: () => void shell.openExternal(FEEDBACK_URL) });
-    items.push({ label: revealLabel, click: revealExports });
-
-    if (isDev) {
-      items.push({ type: "separator" });
-      items.push({ role: "reload" });
-      items.push({
-        label: "Inspect Element",
-        click: () => window.webContents.inspectElement(params.x, params.y),
-      });
-    }
-
-    Menu.buildFromTemplate(items).popup({ window });
+    if (items.length) Menu.buildFromTemplate(items).popup({ window });
   });
 }

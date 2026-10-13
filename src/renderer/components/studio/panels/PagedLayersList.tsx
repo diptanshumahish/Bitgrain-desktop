@@ -12,7 +12,7 @@ interface PagedLayersListProps {
   onAddFrame: (width: number, height: number, name?: string) => void;
   frameWidth: number;
   frameHeight: number;
-  onDuplicatePage: () => void;
+  onDuplicatePage: (pageId: string) => void;
   onDeletePage: (id: string) => void;
   onSelect: (id: string, multi?: boolean) => void;
   onSelectIds: (ids: string[]) => void;
@@ -25,7 +25,7 @@ interface PagedLayersListProps {
 }
 
 const HEADER_BASE =
-  "group flex items-center gap-1.5 mx-1 h-7 px-1.5 rounded-md cursor-pointer select-none transition-colors duration-100";
+  "group flex items-center gap-1.5 mx-1 mt-1 mb-0.5 h-7 px-2 rounded-sm cursor-pointer select-none transition-colors duration-100";
 
 export const PagedLayersList: React.FC<PagedLayersListProps> = ({
   pages,
@@ -53,17 +53,17 @@ export const PagedLayersList: React.FC<PagedLayersListProps> = ({
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-1">
       {pages.map((page, index) => {
         const isActive = page.id === activePageId;
         const isCollapsed = collapsed[page.id] ?? false;
         const displayName = page.name || `Page ${index + 1}`;
         return (
-          <div key={page.id} className="flex flex-col">
+          <div key={page.id} className="flex flex-col gap-0.5">
             <div
               className={`${HEADER_BASE} ${
                 isActive
-                  ? "bg-[var(--s-accent-soft)] text-[var(--s-text)]"
+                  ? "bg-[var(--s-bg-input-hover)] text-[var(--s-text)]"
                   : "text-[var(--s-text-muted)] hover:bg-[var(--s-bg-input)]"
               }`}
               onClick={() => {
@@ -85,7 +85,7 @@ export const PagedLayersList: React.FC<PagedLayersListProps> = ({
               <span className={`shrink-0 ${isActive ? "text-[var(--s-accent)]" : "text-[var(--s-text-subtle)]"}`}>
                 <Frame size={12} strokeWidth={1.75} />
               </span>
-              <span className="flex-1 text-[11.5px] font-semibold truncate">
+              <span className="flex-1 text-[11.5px] font-medium truncate">
                 {displayName}
               </span>
               <span className="text-[9px] text-[var(--s-text-subtle)] [font-variant-numeric:tabular-nums] group-hover:hidden">
@@ -96,8 +96,7 @@ export const PagedLayersList: React.FC<PagedLayersListProps> = ({
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
-                    onSelectPage(page.id);
-                    onDuplicatePage();
+                    onDuplicatePage(page.id);
                   }}
                   className="w-5 h-5 flex items-center justify-center rounded text-[var(--s-text-subtle)] hover:text-[var(--s-text)] hover:bg-[var(--s-bg-panel)]"
                   aria-label="Duplicate page"

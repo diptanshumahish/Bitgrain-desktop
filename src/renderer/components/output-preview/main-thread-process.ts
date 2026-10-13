@@ -4,13 +4,15 @@ import {
   renderBitmap,
   renderChars,
   renderDitherBatchFromCharData,
-  asciiSurface,
 } from "./render-helpers";
 import { ASCII_CELL_W, ASCII_CELL_H, ASCII_TARGET_COLS } from "../../engine/plugins/ascii";
+import { asciiSampleSize } from "../../engine/plugins/ascii/ascii-sampling";
 import { BRAILLE_CELL_W, BRAILLE_CELL_H, BRAILLE_TARGET_COLS } from "../../engine/plugins/braille";
 import type { OutputPreviewProps } from "./types";
 import { compactCache } from "./preview-cache";
 import { applyPrintFinishToCanvas, buildPrintFinishOptions } from "../../engine/print-finish";
+import { saturationFor } from "./colour-saturation";
+import { paperRgbFor, resolveSurface } from "./paper-surface";
 
 interface MainThreadCtx {
   imgCacheRef: React.MutableRefObject<{ src: string; el: HTMLImageElement } | null>;
@@ -23,7 +25,7 @@ interface MainThreadCtx {
 interface MainThreadParams extends Pick<OutputPreviewProps,
   "image" | "resolution" | "contrast" | "brightness" | "saturation" |
   "mode" | "ditherMethod" | "isColor" | "fgColor" | "bgColor" |
-  "palette" | "lutId" | "halftoneStyle" | "halftoneShape"
+  "palette" | "lutId" | "halftoneStyle" | "halftoneShape" | "grade" | "paperColor"
 > {
   ditherFactor: number;
   asciiCharset?: string;
@@ -42,10 +44,12 @@ interface MainThreadParams extends Pick<OutputPreviewProps,
   bloomThreshold: number;
   hazeWarmth: number;
   halftoneCell: number;
+  halftoneLines: number;
   halftoneAngle: number;
   halftoneInvert: boolean;
   halftoneIntensity: number;
   halftoneSharpness: number;
+  halftoneGrit?: number;
   popartCell?: number;
   popartAngle?: number;
   popartThreshold?: number;
@@ -129,19 +133,24 @@ export const processMainThread = (
     rows = Math.max(isLUT ? MIN_LUT_DIM : MIN_BITMAP_ROWS, Math.floor(rows * previewScale));
   }
 
-  pCanvas.width = cols;
-  pCanvas.height = rows;
-  pCtx.drawImage(img, 0, 0, cols, rows);
-  const imageData = pCtx.getImageData(0, 0, cols, rows);
+  const { sampleWidth, sampleHeight } = asciiSampleSize(cols, rows, isAscii);
+  pCanvas.width = sampleWidth;
+  pCanvas.height = sampleHeight;
+  pCtx.imageSmoothingQuality = "high";
+  pCtx.drawImage(img, 0, 0, sampleWidth, sampleHeight);
+  const imageData = pCtx.getImageData(0, 0, sampleWidth, sampleHeight);
   const data = new Float32Array(imageData.data);
 
   const res = runTransform(p.mode, {
     data,
-    width: cols,
-    height: rows,
+    grade: p.grade,
+    width: sampleWidth,
+    height: sampleHeight,
+    asciiGridCols: cols,
+    asciiGridRows: rows,
     contrast: p.contrast,
     brightness: p.brightness,
-    saturation: p.saturation,
+    saturation: saturationFor(p.isColor, p.saturation),
     isColor: p.isColor,
     asciiCharset: p.asciiCharset,
     asciiEdges: p.asciiEdges,
@@ -153,18 +162,22 @@ export const processMainThread = (
     noise: p.noise,
     hue: p.hue,
     palette: p.palette,
+    paperColor: paperRgbFor(p.paperColor),
     lutId: p.lutId,
     hazeIntensity: p.hazeIntensity,
     bloomIntensity: p.bloomIntensity,
     bloomThreshold: p.bloomThreshold,
     hazeWarmth: p.hazeWarmth,
     halftoneCell: p.halftoneCell,
+    halftoneLines: p.halftoneLines,
     halftoneAngle: p.halftoneAngle,
     halftoneStyle: p.halftoneStyle,
     halftoneShape: p.halftoneShape,
     halftoneInvert: p.halftoneInvert,
     halftoneIntensity: p.halftoneIntensity,
     halftoneSharpness: p.halftoneSharpness,
+    halftoneGrit: p.halftoneGrit,
+    halftoneSupersample: true,
     popartCell: p.popartCell,
     popartAngle: p.popartAngle,
     popartThreshold: p.popartThreshold,
@@ -194,11 +207,13 @@ export const processMainThread = (
   canvas.width = outCols * charWidth;
   canvas.height = outRows * charHeight;
 
+  const surface = resolveSurface({ lastMode, asciiTone: p.asciiTone, paperColor: p.paperColor, fgColor: p.fgColor, bgColor: p.bgColor });
+
   if (isDither && res.charData) {
     renderDitherBatchFromCharData(
       drawCtx, canvas, bufCanvasRef,
       res.charData, res.colorData ?? null,
-      cols, rows, p.isColor, p.palette, p.fgColor, p.bgColor,
+      cols, rows, p.isColor, p.palette, surface.fg, surface.bg,
     );
   } else if (res.colorData && !res.charData) {
     renderBitmap(drawCtx, canvas, bufCanvasRef, res.colorData, outCols, outRows);
@@ -208,8 +223,8 @@ export const processMainThread = (
       res.charData, res.colorData ?? null,
       outCols, outRows, charWidth, charHeight,
       p.isColor,
-      isBraille ? asciiSurface("dark").fg : isAscii ? asciiSurface(p.asciiTone ?? "dark").fg : p.fgColor,
-      isBraille ? asciiSurface("dark").bg : isAscii ? asciiSurface(p.asciiTone ?? "dark").bg : p.bgColor,
+      surface.fg,
+      surface.bg,
       isAscii,
     );
   }
@@ -217,7 +232,7 @@ export const processMainThread = (
   if (p.printFinish && lastMode !== "ascii" && lastMode !== "braille") {
     applyPrintFinishToCanvas(
       canvas,
-      buildPrintFinishOptions(p.printFinishStrength ?? 0.85, p.bgColor),
+      buildPrintFinishOptions(p.printFinishStrength ?? 0.85, surface.bg, p.isColor === false),
     );
   }
 

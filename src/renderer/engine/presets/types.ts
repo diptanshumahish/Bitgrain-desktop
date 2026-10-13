@@ -13,9 +13,11 @@ export interface PresetConfig {
   hue: number;
   isColor: boolean;
   halftoneCell?: number;
+  halftoneLines?: number;
   halftoneAngle?: number;
   halftoneStyle?: 'mono' | 'color' | 'cmyk';
   halftoneInvert?: boolean;
+  halftoneGrit?: number;
   asciiCharset?: string;
   asciiTone?: AsciiTone;
   asciiDensity?: number;

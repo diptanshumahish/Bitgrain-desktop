@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import { Image as ImageIcon, Layers, Upload } from "lucide-react";
 import type { ArtworkSourceKind } from "./artwork-source";
 import type { Layer } from "../../../data/studioTypes";
+import { trackEvent } from "../../../lib/tracker";
 
 interface ArtworkSourcePickerProps {
   dark: boolean;
@@ -43,6 +44,7 @@ export const ArtworkSourcePicker: React.FC<ArtworkSourcePickerProps> = ({
   ];
 
   const handlePick = (kind: ArtworkSourceKind): void => {
+    trackEvent("studio", "mockup_artwork_source_chosen", { details: { kind } });
     if (kind === "design") onPickDesign();
     if (kind === "layer") onPickLayer();
     if (kind === "upload") fileInputRef.current?.click();

@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { X, Download, Film } from "lucide-react";
+import { resolveExportPlan } from "../../lib/plan-gate/resolve-export-plan";
+import { X, Download, Film, BookOpen } from "lucide-react";
 import { renderForExport } from "../output-preview/export-render";
 import { useSignalValue } from "../../lib/signal";
 import { themeSignal } from "../../store/global-theme-store";
@@ -7,10 +8,13 @@ import { imageSignal } from "../../store/image-store";
 import { ANIMATORS, getAnimator } from "../../engine/animate/animators";
 import { encodeAnimation } from "../../engine/animate/encode-animation";
 import { trackEvent } from "../../lib/tracker";
-import { usePayment } from "../../hooks/usePayment";
 import { getPlanLimits } from "../../config/plan-limits";
 import { capLongEdgeForPlan } from "../../lib/plan-gate/plan-long-edge";
 import { preloadWatermarkLogo, drawWatermarkPill } from "../../engine/watermark";
+import { frameBaseCanvas, encodeLongEdgeFor } from "../../engine/animate/framing/frame-canvas";
+import { animateFramingSignal } from "./animate/animate-framing-store";
+import { AnimateFramingPicker } from "./animate/AnimateFramingPicker";
+import { Slider } from "../studio/ui/slider";
 
 interface AnimateModalProps {
   onClose: () => void;
@@ -23,7 +27,8 @@ const FPS_OPTIONS = [12, 24, 30];
 const DEFAULT_FPS = 24;
 const DEFAULT_DURATION = 3;
 const DURATION_MIN = 1;
-const DURATION_MAX = 6;
+const DURATION_MAX = 8;
+const DURATION_STEP = 0.5;
 
 const toEven = (value: number): number => Math.max(2, Math.round(value / 2) * 2);
 
@@ -39,9 +44,10 @@ const triggerDownload = (blob: Blob, filename: string): void => {
 export const AnimateModal: React.FC<AnimateModalProps> = ({ onClose }) => {
   const isDark = useSignalValue(themeSignal) === "dark";
   const hasImage = !!imageSignal.value;
-  const { credits } = usePayment();
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const baseRef = useRef<HTMLCanvasElement | null>(null);
+  const framedRef = useRef<HTMLCanvasElement | null>(null);
+  const framing = useSignalValue(animateFramingSignal);
   const rafRef = useRef<number | null>(null);
   const [ready, setReady] = useState(false);
   const [animatorId, setAnimatorId] = useState(ANIMATORS[0].id);
@@ -70,9 +76,11 @@ export const AnimateModal: React.FC<AnimateModalProps> = ({ onClose }) => {
 
   useEffect(() => {
     if (!ready) return;
-    const base = baseRef.current;
+    const source = baseRef.current;
     const canvas = previewCanvasRef.current;
-    if (!base || !canvas) return;
+    if (!source || !canvas) return;
+    const base = frameBaseCanvas(source, framing);
+    framedRef.current = base;
     canvas.width = base.width;
     canvas.height = base.height;
     const ctx = canvas.getContext("2d");
@@ -89,21 +97,23 @@ export const AnimateModal: React.FC<AnimateModalProps> = ({ onClose }) => {
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [ready, animatorId, durationSec]);
+  }, [ready, animatorId, durationSec, framing]);
 
   const handleExport = useCallback(async () => {
-    const base = baseRef.current;
+    const plan = await resolveExportPlan();
+    if (!plan) return;
+    const base = framedRef.current;
     if (!base) return;
     setExporting(true);
     setProgress(0);
     setError("");
     const longEdge = Math.max(base.width, base.height);
-    const scale = Math.min(1, capLongEdgeForPlan(credits.plan, ENCODE_MAX) / longEdge);
+    const scale = Math.min(1, capLongEdgeForPlan(plan, encodeLongEdgeFor(framing, ENCODE_MAX)) / longEdge);
     const width = toEven(base.width * scale);
     const height = toEven(base.height * scale);
     const frameCount = Math.max(1, Math.round(durationSec * fps));
     const animator = getAnimator(animatorId);
-    const watermarkLogo = getPlanLimits(credits.plan).watermark ? await preloadWatermarkLogo() : undefined;
+    const watermarkLogo = getPlanLimits(plan).watermark ? await preloadWatermarkLogo() : undefined;
     try {
       const { blob, extension } = await encodeAnimation({
         width,
@@ -120,13 +130,19 @@ export const AnimateModal: React.FC<AnimateModalProps> = ({ onClose }) => {
       trackEvent("studio", "export_animation", {
         details: { format: extension, width, height, animator: animator.id },
       });
+      trackEvent("home", "animate_exported", {
+        details: { format: extension, animator: animator.id, fps, duration_sec: durationSec, framing },
+      });
       setExporting(false);
       onClose();
-    } catch {
+    } catch (err) {
+      trackEvent("home", "animate_export_failed", {
+        details: { animator: animator.id, error_name: err instanceof Error ? err.name : "unknown" },
+      });
       setError("export failed in this browser");
       setExporting(false);
     }
-  }, [animatorId, durationSec, fps, onClose, credits.plan]);
+  }, [animatorId, durationSec, fps, onClose, framing]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm font-editorial">
@@ -135,9 +151,19 @@ export const AnimateModal: React.FC<AnimateModalProps> = ({ onClose }) => {
           <span className="text-sm font-semibold text-white flex items-center gap-2">
             <Film size={14} /> animate
           </span>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-3">
+            <a
+              href="/docs/03-effects/08-animate-a-still"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-white transition-colors no-underline"
+            >
+              <BookOpen size={12} /> Guide
+            </a>
+            <button onClick={() => { trackEvent("home", "animate_cancelled"); onClose(); }} className="text-zinc-500 hover:text-white transition-colors">
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="relative flex items-center justify-center overflow-hidden min-w-[min(280px,90vw)] min-h-[200px] max-h-[calc(90vh-220px)] bg-zinc-900">
@@ -171,18 +197,16 @@ export const AnimateModal: React.FC<AnimateModalProps> = ({ onClose }) => {
           </div>
 
           <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-zinc-400">length</span>
-              <input
-                type="range"
+            <div className="w-44">
+              <Slider
+                label="Length"
                 min={DURATION_MIN}
                 max={DURATION_MAX}
-                step={0.5}
+                step={DURATION_STEP}
                 value={durationSec}
-                onChange={(event) => setDurationSec(Number(event.target.value))}
-                className="accent-violet-500 h-1 w-28"
+                suffix="s"
+                onChange={setDurationSec}
               />
-              <span className="text-[11px] text-zinc-300 tabular-nums w-8">{durationSec}s</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-zinc-400">fps</span>
@@ -200,6 +224,7 @@ export const AnimateModal: React.FC<AnimateModalProps> = ({ onClose }) => {
                 </button>
               ))}
             </div>
+            <AnimateFramingPicker />
           </div>
 
           {error && <p className="text-xs text-red-400">{error}</p>}

@@ -1,5 +1,5 @@
 import React from "react";
-import { Upload, ImageIcon, Trash2, Dices } from "lucide-react";
+import { Upload, ImageIcon, Trash2, Dices, SunMedium } from "lucide-react";
 import {
   LeftPanel,
   PanelSection,
@@ -13,7 +13,9 @@ import { RESOLUTION_MIN, RESOLUTION_MAX } from "../../../store/transform-store";
 import { FiltersPopover } from "../../../components/toolbar/popovers/FiltersPopover";
 import { PalettePopover } from "../../../components/toolbar/popovers/PalettePopover";
 import { AlgorithmPopover } from "../../../components/toolbar/popovers/AlgorithmPopover";
-import { HalftonePopover } from "../../../components/toolbar/popovers/HalftonePopover";
+import { HalftonePopover } from "../../../components/toolbar/popovers/halftone/HalftonePopover";
+import { PageColourRow } from "../../../components/toolbar/colour/page-colour/PageColourRow";
+import { toggleTonePanel } from "../../../modules/grading/editor/tone-panel-events";
 import { ArtisticEffectsPopover } from "../../../components/toolbar/popovers/ArtisticEffectsPopover";
 import { PopArtPopover } from "../../../components/toolbar/popovers/PopArtPopover";
 import { AsciiPopover } from "../../../components/toolbar/popovers/AsciiPopover";
@@ -97,6 +99,8 @@ export function DarkroomPanel(props: DarkroomPanelProps) {
         <SliderRow label="saturation" value={s.saturation} min={0} max={2} step={0.01} onChange={s.setSaturation} onDone={s.onDone} format={(v) => v.toFixed(2)} disabled={!s.hasImage || graded} />
         <SliderRow label="grain" value={s.grain} min={0} max={1} step={0.01} onChange={s.setGrain} onDone={s.onDone} format={(v) => `${Math.round(v * 100)}%`} disabled={!s.hasImage || graded} />
         <SliderRow label="hue" value={s.hue} min={-180} max={180} step={1} onChange={s.setHue} onDone={s.onDone} format={(v) => `${Math.round(v)}°`} disabled={!s.hasImage || graded} />
+        <ToggleRow label="film grain" active={s.isGrainActive} onToggle={s.toggleFilmGrain} disabled={!s.hasImage} />
+        <PanelButton label="Tone" icon={<SunMedium size={13} strokeWidth={2} />} onClick={toggleTonePanel} disabled={!s.hasImage} />
         <ToggleRow label="print finish" active={s.printFinish} onToggle={() => { s.setPrintFinish(!s.printFinish); s.onDone(); }} disabled={!s.hasImage} />
         {s.printFinish && (
           <SliderRow label="finish strength" value={s.printFinishStrength} min={0} max={1} step={0.01} onChange={s.setPrintFinishStrength} onDone={s.onDone} format={(v) => `${Math.round(v * 100)}%`} disabled={!s.hasImage} />
@@ -104,6 +108,7 @@ export function DarkroomPanel(props: DarkroomPanelProps) {
       </PanelSection>
 
       <PanelSection title="Palette" defaultOpen={false} active={paletteActive}>
+        <PageColourRow />
         <PalettePopover palette={s.palette} setPalette={s.setPalette} onClose={noop} static />
       </PanelSection>
 
@@ -120,7 +125,7 @@ export function DarkroomPanel(props: DarkroomPanelProps) {
       </PanelSection>
 
       <PanelSection title="Halftone" defaultOpen={false} active={s.isHalftoneActive}>
-        <HalftonePopover mode={s.mode} onToggle={s.toggleHalftone} halftoneCell={s.halftoneCell} setHalftoneCell={s.setHalftoneCell} halftoneAngle={s.halftoneAngle} setHalftoneAngle={s.setHalftoneAngle} halftoneStyle={s.halftoneStyle} setHalftoneStyle={s.setHalftoneStyle} halftoneShape={s.halftoneShape} setHalftoneShape={s.setHalftoneShape} halftoneInvert={s.halftoneInvert} setHalftoneInvert={s.setHalftoneInvert} halftoneIntensity={s.halftoneIntensity} setHalftoneIntensity={s.setHalftoneIntensity} halftoneSharpness={s.halftoneSharpness} setHalftoneSharpness={s.setHalftoneSharpness} onStateChangeFinished={s.onDone} onClose={noop} static />
+        <HalftonePopover mode={s.mode} onToggle={s.toggleHalftone} onApplyPreset={s.applyPreset} onStateChangeFinished={s.onDone} onClose={noop} static />
       </PanelSection>
 
       <PanelSection title="Artistic" defaultOpen={false} active={artisticActive}>

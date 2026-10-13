@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import type { TemplatePage } from "../../data/studioTypes";
-import { clonePage } from "../../data/templates/template-pages";
 
 export interface HistoryEntry {
   pages: TemplatePage[];
@@ -30,7 +29,7 @@ export interface UseStudioHistoryResult {
 }
 
 const MAX_HISTORY = 40;
-const clonePages = (pages: TemplatePage[]): TemplatePage[] => pages.map(clonePage);
+const clonePages = (pages: TemplatePage[]): TemplatePage[] => structuredClone(pages);
 
 export const useStudioHistory = ({
   pages,

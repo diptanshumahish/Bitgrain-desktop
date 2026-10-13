@@ -4,10 +4,13 @@ export const CHECKOUT_PATH = "/checkout";
 
 const PENDING_ORDER_KEY = "bg:checkout:pending";
 
-// Where the buyer came from, carried across the PayPal redirect so the return leg can send them
-// back to the editor or studio they were in rather than dropping them on the landing page.
+// Carries context across the Dodo-hosted checkout redirect so the return leg can finalise the
+// right payment (one-time vs subscription) and send the buyer back to the editor or studio they
+// were in rather than dropping them on the landing page.
 export interface PendingOrder {
-  orderId: string;
+  kind: "one_time" | "subscription";
+  paymentId?: string;
+  subscriptionId?: string;
   currency: Currency;
   next: string;
 }

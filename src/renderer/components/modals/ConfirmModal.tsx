@@ -9,6 +9,7 @@ interface ConfirmModalProps {
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
+  safeDefault?: boolean;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -20,6 +21,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   danger = false,
+  safeDefault = false,
 }) => {
   const handleConfirm = () => {
     onConfirm();
@@ -34,7 +36,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") handleCancel();
-      if (event.key === "Enter") handleConfirm();
+      if (event.key === "Enter") {
+        event.preventDefault();
+        if (safeDefault) handleCancel();
+        else handleConfirm();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -71,13 +77,14 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <div className="px-4 pb-4 flex items-center justify-end gap-1">
           <button
             onClick={handleCancel}
+            autoFocus={safeDefault}
             className="h-9 px-3.5 rounded-lg text-[12px] font-medium text-[var(--s-text-muted)] bg-transparent hover:text-[var(--s-text)] hover:bg-[var(--s-bg-input)] transition-colors active:scale-[0.98]"
           >
             {cancelLabel}
           </button>
           <button
             onClick={handleConfirm}
-            autoFocus
+            autoFocus={!safeDefault}
             className={`h-9 px-4 rounded-lg text-[12px] font-medium transition-all active:scale-[0.98] ${confirmClasses}`}
           >
             {confirmLabel}

@@ -50,10 +50,12 @@ export const adminFontOptionsSignal = signal<CustomFontEntry[]>([]);
 export const customFontsReadySignal = signal(0);
 
 let families: FontFamily[] = [];
-let loaded = false;
+let registration: Promise<void> | null = null;
+let filesRequested = false;
 
 const preloadFontFiles = (list: FontFamily[]): void => {
-  if (typeof document === "undefined" || !document.fonts) return;
+  if (typeof document === "undefined" || !document.fonts || filesRequested || list.length === 0) return;
+  filesRequested = true;
   const requests = list.flatMap((family) =>
     family.variants.map((variant) => {
       const weight = variant.isVariable ? variant.weightMax : variant.weight;
@@ -67,9 +69,7 @@ const preloadFontFiles = (list: FontFamily[]): void => {
   });
 };
 
-export const ensureAdminFontsLoaded = async (): Promise<void> => {
-  if (loaded) return;
-  loaded = true;
+const fetchAndRegisterFonts = async (): Promise<void> => {
   const res = await callApi<{ families: FontFamily[] }>("/api/fonts").catch(() => null);
   if (!res?.families?.length) return;
   families = res.families;
@@ -96,8 +96,20 @@ export const ensureAdminFontsLoaded = async (): Promise<void> => {
     value: `'${family.family}', sans-serif`,
     group: "Bitgrain fonts",
   }));
+};
 
+export const registerAdminFonts = (): Promise<void> => {
+  if (!registration) registration = fetchAndRegisterFonts();
+  return registration;
+};
+
+export const preloadAdminFontFiles = (): void => {
   preloadFontFiles(families);
+};
+
+export const ensureAdminFontsLoaded = async (): Promise<void> => {
+  await registerAdminFonts();
+  preloadAdminFontFiles();
 };
 
 // availableStylesForFamily reports which styles (upright / italic) an admin font actually ships,

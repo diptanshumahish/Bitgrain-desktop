@@ -86,6 +86,8 @@ export function createMainWindow(): BrowserWindow {
 
   window.once("ready-to-show", () => window.show());
 
+  lockDownBrowserBehaviour(window);
+
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: "deny" };
@@ -99,4 +101,37 @@ export function createMainWindow(): BrowserWindow {
   }
 
   return window;
+}
+
+// Strip the browser out of the window so it behaves like a native app: no
+// reload (Cmd/Ctrl+R, Shift+Cmd+R, F5), no navigating the page away (a file
+// dropped outside a drop zone, a stray link), no pinch-zoom of the whole UI.
+// Dev builds keep Cmd/Ctrl+Alt+I for DevTools.
+function lockDownBrowserBehaviour(window: BrowserWindow): void {
+  const isDev = !!process.env["ELECTRON_RENDERER_URL"];
+  const contents = window.webContents;
+
+  contents.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown") return;
+    const mod = input.meta || input.control;
+    const key = input.key.toLowerCase();
+    if (key === "f5" || (mod && key === "r")) {
+      event.preventDefault();
+      return;
+    }
+    if (isDev && mod && input.alt && key === "i") {
+      event.preventDefault();
+      contents.toggleDevTools();
+    }
+  });
+
+  contents.on("will-navigate", (event, url) => {
+    const current = contents.getURL();
+    const sameDocument = current && url.split("#")[0] === current.split("#")[0];
+    if (!sameDocument) event.preventDefault();
+  });
+
+  contents.on("did-finish-load", () => {
+    void contents.setVisualZoomLevelLimits(1, 1);
+  });
 }

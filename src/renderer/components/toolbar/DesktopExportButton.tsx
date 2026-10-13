@@ -3,6 +3,7 @@ import { Download } from "lucide-react";
 import { ExportPopover } from "./ExportPopover";
 import { signal, useSignalValue } from "../../lib/signal";
 import type { DownloadRasterFn } from "../../engine/export/export-types";
+import type { BTGImageEditorProject } from "../../utils/btg-export";
 
 // Exported so the native "Export Image…" menu command can open the darkroom's
 // export popover, which otherwise only opens from the title-bar button.
@@ -10,7 +11,6 @@ export const desktopExportOpenSignal = signal(false);
 const isOpenSignal = desktopExportOpenSignal;
 
 interface DesktopExportButtonProps {
-  credits: { png: number; svg: number };
   transparentBg: boolean;
   onToggleTransparentBg: () => void;
   onDownloadRaster: DownloadRasterFn;
@@ -19,24 +19,7 @@ interface DesktopExportButtonProps {
   shareState: "idle" | "copied";
   isLUT?: boolean;
   imageData?: string;
-  effectsData?: {
-    modes: string[];
-    lutId: string | null;
-    ditherMethod: string;
-    ditherFactor: number;
-    resolution: number;
-    contrast: number;
-    brightness: number;
-    saturation: number;
-    grain: number;
-    hue: number;
-    isColor: boolean;
-    palette: { id: string; colors: string[] } | null;
-    hazeIntensity: number;
-    bloomIntensity: number;
-    bloomThreshold: number;
-    hazeWarmth: string;
-  };
+  effectsData?: BTGImageEditorProject["effects"];
 }
 
 export const DesktopExportButton: React.FC<DesktopExportButtonProps> = (props) => {
@@ -66,7 +49,6 @@ export const DesktopExportButton: React.FC<DesktopExportButtonProps> = (props) =
       {isOpen && (
         <div className="absolute top-full mt-2 right-0 bg-[var(--s-bg-panel)] rounded-[24px] border border-black/5 dark:border-white/5 overflow-hidden animate-popover font-editorial z-50">
           <ExportPopover
-            credits={props.credits}
             transparentBg={props.transparentBg}
             onToggleTransparentBg={props.onToggleTransparentBg}
             onDownloadRaster={props.onDownloadRaster}

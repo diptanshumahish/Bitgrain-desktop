@@ -1,6 +1,6 @@
 import type { TornEdgeEffect, UploadLayer } from "../../../../data/studioTypes";
 import { buildTornEdge, hashStringSeed, type TornPoint } from "../../../../utils/torn-edge";
-import { containFit, coverFit } from "./image-helpers";
+import { drawFitted } from "./image-helpers";
 
 const DEFAULT_BORDER_COLOR = "#ffffff";
 
@@ -15,18 +15,6 @@ const traceLocalPath = (
     else ctx.lineTo(point.x * s, point.y * s);
   });
   ctx.closePath();
-};
-
-const drawFittedSource = (
-  ctx: CanvasRenderingContext2D,
-  source: HTMLImageElement | HTMLCanvasElement,
-  fit: UploadLayer["fit"],
-  width: number,
-  height: number,
-): void => {
-  if (fit === "cover") coverFit(ctx, source, 0, 0, width, height);
-  else if (fit === "contain") containFit(ctx, source, 0, 0, width, height);
-  else ctx.drawImage(source, 0, 0, width, height);
 };
 
 export const composeTornUploadCanvas = (
@@ -54,6 +42,6 @@ export const composeTornUploadCanvas = (
   ctx.clip();
   if (filterStr) ctx.filter = filterStr;
   ctx.imageSmoothingEnabled = !layer.bitgrainEffect;
-  drawFittedSource(ctx, source, layer.fit, width, height);
+  drawFitted(ctx, source, layer.fit, { x: 0, y: 0, width, height }, layer.crop);
   return canvas;
 };

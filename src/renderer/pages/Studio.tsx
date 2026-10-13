@@ -3,11 +3,9 @@ import { Play } from "lucide-react";
 import { useSignalValue } from "../lib/signal";
 import { themeSignal } from "../store/global-theme-store";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { templatesSignal, getBlankTemplate } from "../store/templates-store";
-import { callApi } from "../lib/api-client";
-import { toTemplateDef, type ApiTemplate } from "../lib/templates-api";
-import { scaleTemplateToMin } from "../data/templates/scale-template";
-import type { TemplateDef, Layer, CustomFontEntry, TemplatePage, UploadLayer, FrameLayer } from "../data/studioTypes";
+import { type ApiTemplate } from "../lib/templates-api";
+import { peekRouteTemplate, readRouteTemplateId, useApplyRouteTemplate } from "../lib/template-cards/use-route-template";
+import type { TemplateDef, Layer, CustomFontEntry, FrameLayer } from "../data/studioTypes";
 import { useStudioPages, type FrameRect } from "./studio-page/use-studio-pages";
 import { MobileStudioWorkspace } from "./studio-page/mobile/MobileStudioWorkspace";
 import { PopoverPortal } from "../components/portal/PopoverPortal";
@@ -25,6 +23,7 @@ import { loadStoredCustomFonts } from "./studio-page/load-custom-fonts";
 import { buildLayerContextMenu } from "./studio-page/build-layer-context-menu";
 import { useStudioHistory } from "./studio-page/use-studio-history";
 import { useStudioLayers } from "./studio-page/use-studio-layers";
+import { useElementInsert } from "../modules/elements/insert/use-element-insert";
 import { applyBtgProject } from "./studio-page/load-btg";
 import { findLayerById, updateLayersRecursively } from "../utils/studio-layers";
 import { findParentContainerId } from "../utils/frame-tree";
@@ -42,7 +41,15 @@ import { TopBarExport } from "../components/studio/topbar/TopBarExport";
 import { setTitlebarActions, clearTitlebarActions } from "../store/titlebar-actions-store";
 import { activeTabIdSignal } from "../store/document-tabs-store";
 import { emitModal } from "../lib/event-bus";
-import { markSaving, markSaved, markDirty } from "../store/studio-save-status";
+import { markDirty } from "../store/studio-save-status";
+import { useStudioAutosave } from "./studio-page/use-studio-autosave";
+import { WorkLoadOverlay } from "./studio-page/WorkLoadOverlay";
+import { requestCanvasFit } from "../store/canvas-fit-request";
+import { usePrunedSelection } from "./studio-page/use-pruned-selection";
+import { studioWorkNameSignal } from "../store/studio-work-name";
+import { usePageGenerators } from "./studio-page/use-page-generators";
+import { useStudioCommands } from "./studio-page/use-studio-commands";
+import { isBlankTemplate, resolveInitialTemplate, type StudioLocationState } from "./studio-page/resolve-initial-template";
 import { useTemplatePersist, type TemplateMetadata } from "./studio-page/use-template-persist";
 import { useStudioInit } from "./studio-page/use-studio-init";
 import { useStudioPaste } from "./studio-page/use-studio-paste";
@@ -52,17 +59,10 @@ import { onInsertImage, PluginFloatingWindow } from "../studio-plugins/host";
 import { pluginsSignal, setActivePluginSlug } from "../studio-plugins/host/plugin-bus";
 import { useStudioPageHandlers } from "./studio-page/use-studio-page-handlers";
 import { buildHandleExit, buildHandleNewProject, promptTemplateSwitch } from "./studio-page/studio-navigation";
-import { RESIZE_FORMATS, buildResizedPage } from "../utils/studio-resize";
-
-interface LocationState {
-  image?: string;
-  templateId?: string;
-  fromBTG?: BTGStudioProject;
-}
+import { updateStudioRatingSource } from "../modules/output-rating/studio-rating-context";
 
 const DEFAULT_ZOOM = 0.7;
 const MOBILE_BREAKPOINT_PX = 768;
-const AUTOSAVE_DEBOUNCE_MS = 1200;
 const MIN_PAGE_SIZE_PX = 50;
 const SCALE_CONTENTS_ON_RESIZE = true;
 
@@ -97,16 +97,17 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
   const location = useLocation();
   const navigate = useNavigate();
   const { workId } = useParams<{ workId?: string }>();
-  const routerState = location.state as LocationState | null;
+  const routerState = location.state as StudioLocationState | null;
   const routerImage = routerState?.image ?? null;
 
-  const initial = templateMode
-    ? getBlankTemplate()
-    : initialTemplate
-      ?? (routerState?.templateId
-          ? templatesSignal.value.find((t) => t.id === routerState.templateId)
-          : undefined)
-      ?? getBlankTemplate();
+  const routeTemplateId = templateMode ? null : readRouteTemplateId(location.state, location.search);
+  // Desktop: a new studio tab may be seeded with a starter template; otherwise the
+  // web resolution (route template, router state, blank) applies.
+  const [initial] = useState<TemplateDef>(
+    () => (!templateMode ? initialTemplate : undefined)
+      ?? peekRouteTemplate(routeTemplateId)
+      ?? resolveInitialTemplate(!!templateMode, routerState),
+  );
   const [template, setTemplate] = useState<TemplateDef>(initial);
   const pagesApi = useStudioPages({ initialTemplate: initial });
   const {
@@ -138,7 +139,8 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
     },
     [activePageId, setPageImage],
   );
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [rawSelectedIds, setSelectedIds] = useState<string[]>([]);
+  const selectedIds = usePrunedSelection(rawSelectedIds, pages);
   const [selectedFramePageId, setSelectedFramePageId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [vectorEditingId, setVectorEditingId] = useState<string | null>(null);
@@ -170,14 +172,18 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
   const [workCreatedAt] = useState<number>(() => Date.now());
   const workCreatedAtRef = useRef<number>(workCreatedAt);
   const [workName, setWorkName] = useState<string>(() =>
-    initial.name !== "Blank" ? initial.name : `Untitled, ${new Date().toLocaleDateString()}`,
+    isBlankTemplate(initial) ? `Untitled, ${new Date().toLocaleDateString()}` : initial.name,
   );
   const workNameRef = useRef<string>(workName);
+  useEffect(() => {
+    studioWorkNameSignal.value = workName;
+  }, [workName]);
 
   const handleRenameWork = useCallback((name: string) => {
     setWorkName(name);
     workNameRef.current = name;
     markDirty();
+    trackEvent("studio", "project_renamed");
   }, []);
 
   const studioPersist = useStudioPersist({
@@ -202,59 +208,15 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
   const handleManualSave = templateMode ? templatePersist.handleManualSave : studioPersist.handleManualSave;
   const handleRestore = studioPersist.handleRestore;
 
-  const autosaveRef = useRef(studioPersist.handleManualSave);
-  useEffect(() => {
-    autosaveRef.current = studioPersist.handleManualSave;
+  const scheduleAutosave = useStudioAutosave({ enabled: !templateMode, save: studioPersist.handleManualSave });
+  useEffect(
+    () => scheduleAutosave(),
+    [scheduleAutosave, layers, background, pages, activePageId, canvasW, canvasH, image],
+  );
+
+  const { handleResizeToFormats, handleAddMockupPage } = usePageGenerators({
+    pages, activePageId, pushHistory, setPages, setActivePageId,
   });
-  const autosaveReady = useRef(false);
-  useEffect(() => {
-    if (templateMode) return;
-    if (!autosaveReady.current) {
-      autosaveReady.current = true;
-      return;
-    }
-    const timer = setTimeout(() => {
-      markSaving();
-      void autosaveRef.current().finally(() => markSaved());
-    }, AUTOSAVE_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [templateMode, layers, background, pages, activePageId, canvasW, canvasH, image]);
-
-  const handleResizeToFormats = useCallback((formatIds: string[]) => {
-    const source = pages.find((page) => page.id === activePageId);
-    if (!source) return;
-    const formats = RESIZE_FORMATS.filter((format) => formatIds.includes(format.id));
-    if (formats.length === 0) return;
-    pushHistory();
-    const PAGE_GAP = 200;
-    let cursorX = Math.max(...pages.map((page) => page.x + page.width)) + PAGE_GAP;
-    const created = formats.map((format) => {
-      const page = buildResizedPage(source, format, cursorX, source.y);
-      cursorX += format.width + PAGE_GAP;
-      return page;
-    });
-    setPages([...pages, ...created]);
-    if (created[0]) setActivePageId(created[0].id);
-  }, [pages, activePageId, pushHistory, setPages, setActivePageId]);
-
-  const handleAddMockupPage = useCallback((dataUrl: string, mockupW: number, mockupH: number) => {
-    pushHistory();
-    const PAGE_GAP = 200;
-    const cursorX = pages.length ? Math.max(...pages.map((page) => page.x + page.width)) + PAGE_GAP : 0;
-    const layer: UploadLayer = {
-      id: crypto.randomUUID(), type: "upload", name: "mockup",
-      x: 0, y: 0, width: mockupW, height: mockupH,
-      opacity: 1, locked: false, visible: true,
-      src: dataUrl, fit: "cover", borderRadius: 0,
-    };
-    const page: TemplatePage = {
-      id: crypto.randomUUID(), name: "mockup", layers: [layer],
-      background: "#ffffff", x: cursorX, y: 0,
-      width: mockupW, height: mockupH, image: null,
-    };
-    setPages([...pages, page]);
-    setActivePageId(page.id);
-  }, [pages, pushHistory, setPages, setActivePageId]);
   const showRestoreToast = templateMode ? false : studioPersist.showRestoreToast;
   const setShowRestoreToast = studioPersist.setShowRestoreToast;
 
@@ -295,6 +257,7 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
         resetHistory, setCustomFonts,
       });
       markDirty();
+      requestCanvasFit();
     },
     [resetHistory, setPages, setActivePageId, setImage],
   );
@@ -323,11 +286,13 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
     layers, selectedIds,
     pageWidth: activePage?.width ?? canvasW,
     pageHeight: activePage?.height ?? canvasH,
-    background, setLayers, setSelectedIds, pushHistory,
+    background, setLayers, setSelectedIds, pushHistory, setEditingId,
     targetFrameId: targetFrame?.id ?? null,
     targetFrameSize: targetFrame ? { width: targetFrame.width, height: targetFrame.height } : null,
     setLayersForFrame: pagesApi.setLayersForFrame,
   });
+
+  useElementInsert({ pages, activePageId, setLayersForPage, setActivePageId, setSelectedIds, pushHistory });
 
   const updateLayer = (id: string, updates: Partial<Layer>) => {
     setLayers((prev) => updateLayersRecursively(prev, [id], () => updates));
@@ -405,6 +370,7 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
     pushHistory();
     const newId = pagesApi.duplicateActivePage();
     if (newId) setActivePageId(newId);
+    trackEvent("studio", "page_duplicated", { details: { source: "shortcut" } });
   }, [pushHistory, pagesApi, setActivePageId]);
 
   const deleteSelectedFrameShortcut = useCallback(() => {
@@ -412,11 +378,13 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
     pushHistory();
     pagesApi.deleteFrame(selectedFramePageId);
     setSelectedFramePageId(null);
+    trackEvent("studio", "frame_deleted", { details: { source: "shortcut", is_page: true } });
   }, [selectedFramePageId, pushHistory, pagesApi]);
 
   const handleAddFrame = useCallback(
     (parentId: string | null, rect: FrameRect): string => {
       pushHistory();
+      trackEvent("studio", "frame_added", { details: { nested: parentId !== null } });
       return pagesApi.addFrame(parentId, rect);
     },
     [pushHistory, pagesApi],
@@ -426,6 +394,9 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
     (frameId: string) => {
       pushHistory();
       pagesApi.deleteFrame(frameId);
+      trackEvent("studio", "frame_deleted", {
+        details: { source: "panel", is_page: pagesApi.pages.some((page) => page.id === frameId) },
+      });
       if (frameId === selectedFramePageId) setSelectedFramePageId(null);
       setSelectedIds((prev) => prev.filter((id) => id !== frameId));
     },
@@ -436,6 +407,7 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
     (frameId: string, newParentId: string | null, dropLocal?: { x: number; y: number }) => {
       pushHistory();
       pagesApi.reparentFrame(frameId, newParentId, dropLocal);
+      trackEvent("studio", "frame_reparented", { details: { to_top_level: newParentId === null } });
     },
     [pushHistory, pagesApi],
   );
@@ -463,40 +435,30 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
     setEditingId(null);
     clearStudioAutosave().catch(() => {});
     markDirty();
+    requestCanvasFit();
   };
 
   const handleSelectTemplate = (t: TemplateDef) => {
     promptTemplateSwitch(handleManualSave, () => applyTemplate(t));
   };
 
-  useEffect(() => {
-    if (templateMode) return;
-    const templateId = routerState?.templateId;
-    if (!templateId || initial.id === templateId) return;
-    callApi<ApiTemplate>(`/api/templates/${templateId}`).then((result) => {
-      if (result) applyTemplate(scaleTemplateToMin(toTemplateDef(result), 1080));
-    });
-    // applyTemplate captures latest setters; only initial template id matters here.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useApplyRouteTemplate(routeTemplateId, initial.id, applyTemplate);
+
+  useStudioCommands({ ...layersApi, layers, selectedIds, setSelectedIds, setLayers, pushHistory });
 
   const handleLayerContextMenu = (id: string, x: number, y: number) => {
     buildLayerContextMenu({
-      id, x, y, selectedIds, layers,
-      setSelectedIds, updateLayer,
-      handleDuplicate: layersApi.handleDuplicate,
-      handleGroup: layersApi.handleGroup,
-      handleUngroup: layersApi.handleUngroup,
-      pushHistory, setLayers,
+      ...layersApi, id, x, y, selectedIds, layers, setSelectedIds, updateLayer, pushHistory, setLayers,
     });
   };
 
   const pageHandlers = useStudioPageHandlers({
     pushHistory,
+    undo,
     pagesApi: {
       addPage: pagesApi.addPage,
       addPageWithSize: pagesApi.addPageWithSize,
-      duplicateActivePage: pagesApi.duplicateActivePage,
+      duplicatePageById: pagesApi.duplicatePageById,
       deletePage: pagesApi.deletePage,
     },
     setActivePageId,
@@ -534,6 +496,7 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
   const selectedLayer = selectedIds[0] ? findLayerById(displayLayers, selectedIds[0]) : null;
 
   const railActive = useSignalValue(activeTabIdSignal) === tabId;
+  updateStudioRatingSource({ template, pages, activePageId, workId });
 
   const workspaceProps: StudioWorkspaceProps = {
     railActive,
@@ -562,7 +525,7 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
   // Studio's export + present live in the app title bar (keyed by this tab), not
   // in a custom top bar. Published whenever the document changes; the title bar
   // renders it only while this tab is active.
-  const { anchorRef, handleExport, openExportPopup } = useExportHandlers({
+  const { handleExport, openExportPopup } = useExportHandlers({
     template: effectiveTemplate, background, layers: displayLayers, image, pages, activePageId,
   });
   const handlePresent = useCallback(() => {
@@ -588,11 +551,11 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
           <Play size={12} strokeWidth={2} className="fill-current" />
           Present
         </button>
-        <TopBarExport anchorRef={anchorRef} onExport={handleExport} onOpenPopup={openExportPopup} />
+        <TopBarExport onExport={handleExport} onOpenPopup={openExportPopup} />
       </div>,
     );
     return () => clearTitlebarActions(tabId);
-  }, [tabId, templateMode, handlePresent, handleExport, openExportPopup, anchorRef]);
+  }, [tabId, templateMode, handlePresent, handleExport, openExportPopup]);
 
   // Bitgrain (.btg) document import/export, invoked from the native File menu.
   const { importBTG } = useBTGImport();
@@ -675,6 +638,7 @@ export const Studio: React.FC<StudioProps> = ({ templateMode, instanceId, tabId,
       <h1 className="sr-only">Bitgrain Studio, Dithered Design Workspace</h1>
 
       <StudioWorkspace {...workspaceProps} />
+      <WorkLoadOverlay onRetry={() => void studioPersist.retryLoad()} onBack={() => navigate("/studio")} />
 
       <PopoverPortal />
       <ExportPopupPortal />

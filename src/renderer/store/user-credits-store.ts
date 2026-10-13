@@ -1,23 +1,23 @@
 import { signal } from "../lib/signal";
 import type { UserCredits } from "../hooks/useUser";
 
-const STORAGE_KEY_ACCOUNT_CACHE = "bitgrain_a_cache";
+export const STORAGE_KEY_ACCOUNT_CACHE = "bitgrain_a_cache";
 
-const getInitialAccount = (): UserCredits | null => {
-  const cached =
-    typeof window !== "undefined"
-      ? localStorage.getItem(STORAGE_KEY_ACCOUNT_CACHE)
-      : null;
-  if (cached) {
-    try {
-      return JSON.parse(cached);
-    } catch {
-      return null;
-    }
+export type CreditsStatus = "idle" | "loading" | "ready" | "failed";
+
+export const readCachedAccountCredits = (): UserCredits | null => {
+  if (typeof window === "undefined") return null;
+  const cached = localStorage.getItem(STORAGE_KEY_ACCOUNT_CACHE);
+  if (!cached) return null;
+  try {
+    return JSON.parse(cached) as UserCredits;
+  } catch {
+    return null;
   }
-  return null;
 };
 
 export const accountCreditsSignal = signal<UserCredits | null>(
-  getInitialAccount(),
+  readCachedAccountCredits(),
 );
+
+export const creditsStatusSignal = signal<CreditsStatus>("idle");

@@ -1,10 +1,18 @@
 import { signal } from "../lib/signal";
 import { callApi, backendOnlineSignal } from "../lib/api-client";
+import {
+  API_AUTH_TIMEOUT_MS,
+  API_LOGIN_TIMEOUT_MS,
+  API_SIGNUP_TIMEOUT_MS,
+} from "../lib/api/api-timeouts";
+import { probeBackendHealth } from "../lib/api/backend-health";
+import { describeRequestError } from "../lib/api/request-errors";
+import { backoffDelayMs, waitFor } from "../lib/api/retry-delay";
 import { maintenanceSignal } from "../store/maintenance-store";
 import posthog, { trackEvent as trackAnalytics } from "../lib/analytics";
 import { getAnonymousID, trackEvent } from "../lib/tracker";
 
-interface AuthUser {
+export interface AuthUser {
   id: string;
   email: string;
   name: string;
@@ -23,19 +31,17 @@ export const authBypassSignal = signal(false);
 const API_BASE = import.meta.env.VITE_API_BASE as string | undefined;
 
 const WAS_SIGNED_IN_KEY = "bitgrain_was_signed_in";
-const AUTH_TIMEOUT_MS = 4000;
 const AUTH_RETRY_ATTEMPTS = 3;
-const AUTH_RETRY_DELAY_MS = 1500;
+const AUTH_MAX_RECHECK_ROUNDS = 6;
+const AUTH_RECHECK_MAX_DELAY_MS = 30000;
+const SERVER_ERROR_STATUS = 500;
 
 type AuthMeResult =
   | { status: "user"; user: AuthUser }
   | { status: "signed-out" }
   | { status: "unreachable" };
 
-const delay = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
-const wasSignedIn = (): boolean =>
+export const isReturningUser = (): boolean =>
   typeof localStorage !== "undefined" &&
   localStorage.getItem(WAS_SIGNED_IN_KEY) === "1";
 
@@ -49,9 +55,9 @@ async function fetchAuthMe(): Promise<AuthMeResult> {
   try {
     const res = await fetch(`${API_BASE}/auth/me`, {
       credentials: "include",
-      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+      signal: AbortSignal.timeout(API_AUTH_TIMEOUT_MS),
     });
-    if (res.status >= 500) return { status: "unreachable" };
+    if (res.status >= SERVER_ERROR_STATUS) return { status: "unreachable" };
     if (!res.ok) return { status: "signed-out" };
     const user = (await res.json()) as AuthUser | null;
     return user ? { status: "user", user } : { status: "signed-out" };
@@ -62,13 +68,13 @@ async function fetchAuthMe(): Promise<AuthMeResult> {
 
 async function resolveAuthMe(): Promise<AuthMeResult> {
   let result = await fetchAuthMe();
-  if (result.status !== "unreachable" || !wasSignedIn()) return result;
+  if (result.status !== "unreachable" || !isReturningUser()) return result;
   for (
     let attempt = 1;
     attempt < AUTH_RETRY_ATTEMPTS && result.status === "unreachable";
     attempt++
   ) {
-    await delay(AUTH_RETRY_DELAY_MS);
+    await waitFor(backoffDelayMs(attempt - 1));
     result = await fetchAuthMe();
   }
   return result;
@@ -86,21 +92,55 @@ function applyUser(user: AuthUser | null): void {
   }
 }
 
+function finishAuth(user: AuthUser | null): void {
+  backendOnlineSignal.value = true;
+  applyUser(user);
+  authLoadingSignal.value = false;
+}
+
+function enterMaintenance(): void {
+  backendOnlineSignal.value = false;
+  maintenanceSignal.value = true;
+  authLoadingSignal.value = false;
+}
+
+async function handleUnreachable(apiBase: string, recheckRound: number): Promise<void> {
+  if (!isReturningUser() || recheckRound >= AUTH_MAX_RECHECK_ROUNDS) {
+    authLoadingSignal.value = false;
+    return;
+  }
+  const health = await probeBackendHealth(apiBase);
+  if (health === "down") {
+    enterMaintenance();
+    return;
+  }
+  await waitFor(Math.min(backoffDelayMs(recheckRound + 1), AUTH_RECHECK_MAX_DELAY_MS));
+  await resolveUser(apiBase, recheckRound + 1);
+}
+
+async function resolveUser(apiBase: string, recheckRound: number): Promise<void> {
+  const result = await resolveAuthMe();
+  if (result.status === "unreachable") {
+    await handleUnreachable(apiBase, recheckRound);
+    return;
+  }
+  finishAuth(result.status === "user" ? result.user : null);
+}
+
 export async function loadUser(): Promise<void> {
   if (!API_BASE) {
     authLoadingSignal.value = false;
     return;
   }
-  const result = await resolveAuthMe();
-  if (result.status === "unreachable") {
-    backendOnlineSignal.value = false;
-    if (wasSignedIn()) maintenanceSignal.value = true;
-    authLoadingSignal.value = false;
-    return;
-  }
-  backendOnlineSignal.value = true;
-  applyUser(result.status === "user" ? result.user : null);
-  authLoadingSignal.value = false;
+  await resolveUser(API_BASE, 0);
+}
+
+function trackAuthFailure(eventName: string, reason: string): void {
+  trackEvent("auth", eventName, { details: { method: "email", reason } });
+}
+
+function trackLoginMethodChosen(method: string, mode: string): void {
+  trackEvent("auth", "login_method_chosen", { details: { method, mode }, immediate: true });
 }
 
 // Completes the desktop Google flow: the browser handshake returns to
@@ -131,10 +171,12 @@ export function loginWithGoogle(): void {
     return;
   }
   const anonId = getAnonymousID();
+  trackLoginMethodChosen("google", "oauth");
   window.location.href = `${API_BASE}/auth/google?anonymous_id=${encodeURIComponent(anonId)}`;
 }
 
 export async function logout(): Promise<void> {
+  trackEvent("auth", "logout", { immediate: true });
   await callApi("/auth/logout", { method: "POST" });
   userSignal.value = null;
   rememberSignedIn(false);
@@ -145,75 +187,96 @@ export async function logout(): Promise<void> {
 // account is a destructive, irreversible action gated behind the web account
 // page (bitgrain.app/account), so there is no in-app DELETE /auth/me path.
 
-// Signup hashes with bcrypt and checks the password against the breach corpus before responding,
-// so it needs more headroom than a plain read.
-const SIGNUP_TIMEOUT_MS = 10000;
+type EmailAuthKind = "login" | "signup";
 
-export async function signupWithEmail(
+interface EmailAuthConfig {
+  path: string;
+  timeoutMs: number;
+  mode: string;
+  fallbackError: string;
+}
+
+const EMAIL_AUTH_CONFIG: Record<EmailAuthKind, EmailAuthConfig> = {
+  login: {
+    path: "/auth/login",
+    timeoutMs: API_LOGIN_TIMEOUT_MS,
+    mode: "signin",
+    fallbackError: "We couldn't sign you in. Please check your details and try again.",
+  },
+  signup: {
+    path: "/auth/signup",
+    timeoutMs: API_SIGNUP_TIMEOUT_MS,
+    mode: "signup",
+    fallbackError: "We couldn't create your account. Please try again.",
+  },
+};
+
+type EmailAuthResponse = Partial<AuthUser> & { error?: string };
+
+async function readAuthResponse(res: Response): Promise<EmailAuthResponse> {
+  try {
+    return (await res.json()) as EmailAuthResponse;
+  } catch {
+    return {};
+  }
+}
+
+function completeEmailAuth(kind: EmailAuthKind, user: AuthUser): void {
+  applyUser(user);
+  trackEvent("auth", `${kind}_completed`, {
+    details: { email: user.email, provider: "email" },
+    immediate: true,
+  });
+  trackAnalytics(`${kind}_completed`, { method: "email" });
+}
+
+function postEmailAuth(
+  apiBase: string,
+  config: EmailAuthConfig,
+  payload: Record<string, string>,
+): Promise<Response> {
+  return fetch(`${apiBase}${config.path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ ...payload, anonymous_id: getAnonymousID() }),
+    signal: AbortSignal.timeout(config.timeoutMs),
+  });
+}
+
+async function submitEmailAuth(
+  kind: EmailAuthKind,
+  payload: Record<string, string>,
+): Promise<AuthUser | string> {
+  const config = EMAIL_AUTH_CONFIG[kind];
+  if (!API_BASE) return "No API configured";
+  trackLoginMethodChosen("email", config.mode);
+  try {
+    const res = await postEmailAuth(API_BASE, config, payload);
+    const data = await readAuthResponse(res);
+    if (!res.ok || !data.id) {
+      trackAuthFailure(`${kind}_failed`, `http_${res.status}`);
+      return data.error ?? config.fallbackError;
+    }
+    completeEmailAuth(kind, data as AuthUser);
+    return data as AuthUser;
+  } catch (error) {
+    trackAuthFailure(`${kind}_failed`, "network_error");
+    return describeRequestError(error);
+  }
+}
+
+export function signupWithEmail(
   name: string,
   email: string,
   password: string,
 ): Promise<AuthUser | string> {
-  if (!API_BASE) return "No API configured";
-  try {
-    const anonymous_id = getAnonymousID();
-    const res = await fetch(`${API_BASE}/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ name, email, password, anonymous_id }),
-      signal: AbortSignal.timeout(SIGNUP_TIMEOUT_MS),
-    });
-    const data = (await res.json()) as AuthUser & { error?: string };
-    if (!res.ok) return data.error ?? "Signup failed";
-    userSignal.value = data;
-    rememberSignedIn(true);
-    posthog.identify(data.id, {
-      email: data.email,
-      name: data.name,
-      provider: data.provider,
-    });
-    trackEvent("auth", "signup_completed", {
-      details: { email: data.email, provider: "email" },
-      immediate: true,
-    });
-    trackAnalytics("signup_completed", { method: "email" });
-    return data;
-  } catch {
-    return "Network error, please try again";
-  }
+  return submitEmailAuth("signup", { name, email, password });
 }
 
-export async function loginWithEmail(
+export function loginWithEmail(
   email: string,
   password: string,
 ): Promise<AuthUser | string> {
-  if (!API_BASE) return "No API configured";
-  try {
-    const anonymous_id = getAnonymousID();
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email, password, anonymous_id }),
-      signal: AbortSignal.timeout(4000),
-    });
-    const data = (await res.json()) as AuthUser & { error?: string };
-    if (!res.ok) return data.error ?? "Login failed";
-    userSignal.value = data;
-    rememberSignedIn(true);
-    posthog.identify(data.id, {
-      email: data.email,
-      name: data.name,
-      provider: data.provider,
-    });
-    trackEvent("auth", "login_completed", {
-      details: { email: data.email, provider: "email" },
-      immediate: true,
-    });
-    trackAnalytics("login_completed", { method: "email" });
-    return data;
-  } catch {
-    return "Network error, please try again";
-  }
+  return submitEmailAuth("login", { email, password });
 }

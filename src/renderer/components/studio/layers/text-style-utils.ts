@@ -43,6 +43,7 @@ export const buildBaseTextStyle = (layer: TextLayer): CSSProperties => {
     letterSpacing: layer.letterSpacing,
     lineHeight: layer.lineHeight,
     textTransform: layer.textTransform,
+    textDecorationLine: layer.textDecoration ?? "none",
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
     outline: "none",

@@ -76,6 +76,7 @@ export const SvgTextRenderer: React.FC<SvgTextRendererProps> = ({ layer, respons
           fill={fill}
           textAnchor={textAnchor}
           letterSpacing={layer.letterSpacing}
+          textDecoration={layer.textDecoration ?? "none"}
         >
           {line || " "}
         </text>

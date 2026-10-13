@@ -1,0 +1,61 @@
+export const CURATED_FONTS_HREF =
+  "https://fonts.googleapis.com/css2?family=Gloock&family=Young+Serif&family=Bodoni+Moda:ital,wght@0,400..900;1,400..900&family=Italiana&family=Cinzel:wght@400..900&family=Gilda+Display&family=Newsreader:ital,wght@0,200..800;1,200..800&family=Prata&family=Libre+Caslon+Display&family=Marcellus&family=Yeseva+One&family=Bricolage+Grotesque:wght@200..800&family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&family=Schibsted+Grotesk:wght@400..900&family=Hanken+Grotesk:wght@100..900&family=Sora:wght@100..800&family=Instrument+Sans:wght@400..700&family=Outfit:wght@100..900&family=Jost:ital,wght@0,100..900;1,100..900&family=Tenor+Sans&family=Archivo:wght@100..900&family=Albert+Sans:wght@100..900&family=Unbounded:wght@200..900&family=Darker+Grotesque:wght@300..900&family=Shrikhand&family=Dela+Gothic+One&family=Rubik+Mono+One&family=League+Spartan:wght@100..900&family=Antonio:wght@100..700&family=Bowlby+One&family=Alfa+Slab+One&family=Pinyon+Script&family=Homemade+Apple&family=Reenie+Beanie&family=Allura&family=Martian+Mono:wght@100..800&family=Instrument+Serif:ital@0;1&family=Imbue:opsz,wght@10..100,100..900&family=Kalnia:wght@100..700&family=Caprasimo&family=Bagel+Fat+One&family=Gasoek+One&family=Inter+Tight:ital,wght@0,100..900;1,100..900&family=Host+Grotesk:ital,wght@0,300..800;1,300..800&family=Onest:wght@100..900&family=Parkinsans:wght@300..800&family=Geist+Mono:wght@100..900&family=Mansalva&family=Gochi+Hand&family=Sedgwick+Ave+Display&family=Londrina+Solid:wght@100;300;400;900&display=swap";
+
+interface CuratedFont {
+  label: string;
+  value: string;
+  group: string;
+}
+
+export const CURATED_FONT_FAMILIES: CuratedFont[] = [
+  { label: "Bricolage Grotesque", value: "'Bricolage Grotesque', sans-serif", group: "Sans-serif" },
+  { label: "Familjen Grotesk", value: "'Familjen Grotesk', sans-serif", group: "Sans-serif" },
+  { label: "Schibsted Grotesk", value: "'Schibsted Grotesk', sans-serif", group: "Sans-serif" },
+  { label: "Hanken Grotesk", value: "'Hanken Grotesk', sans-serif", group: "Sans-serif" },
+  { label: "Sora", value: "'Sora', sans-serif", group: "Sans-serif" },
+  { label: "Instrument Sans", value: "'Instrument Sans', sans-serif", group: "Sans-serif" },
+  { label: "Jost", value: "'Jost', sans-serif", group: "Sans-serif" },
+  { label: "Tenor Sans", value: "'Tenor Sans', sans-serif", group: "Sans-serif" },
+  { label: "Archivo", value: "'Archivo', sans-serif", group: "Sans-serif" },
+  { label: "Albert Sans", value: "'Albert Sans', sans-serif", group: "Sans-serif" },
+  { label: "Inter Tight", value: "'Inter Tight', sans-serif", group: "Sans-serif" },
+  { label: "Host Grotesk", value: "'Host Grotesk', sans-serif", group: "Sans-serif" },
+  { label: "Onest", value: "'Onest', sans-serif", group: "Sans-serif" },
+  { label: "Parkinsans", value: "'Parkinsans', sans-serif", group: "Sans-serif" },
+  { label: "Unbounded", value: "'Unbounded', sans-serif", group: "Display" },
+  { label: "Darker Grotesque", value: "'Darker Grotesque', sans-serif", group: "Display" },
+  { label: "League Spartan", value: "'League Spartan', sans-serif", group: "Display" },
+  { label: "Antonio", value: "'Antonio', sans-serif", group: "Display" },
+  { label: "Dela Gothic One", value: "'Dela Gothic One', sans-serif", group: "Display" },
+  { label: "Rubik Mono One", value: "'Rubik Mono One', sans-serif", group: "Display" },
+  { label: "Bowlby One", value: "'Bowlby One', sans-serif", group: "Display" },
+  { label: "Shrikhand", value: "'Shrikhand', cursive", group: "Display" },
+  { label: "Gasoek One", value: "'Gasoek One', sans-serif", group: "Display" },
+  { label: "Bagel Fat One", value: "'Bagel Fat One', sans-serif", group: "Display" },
+  { label: "Londrina Solid", value: "'Londrina Solid', sans-serif", group: "Display" },
+  { label: "Gloock", value: "'Gloock', serif", group: "Serif" },
+  { label: "Young Serif", value: "'Young Serif', serif", group: "Serif" },
+  { label: "Bodoni Moda", value: "'Bodoni Moda', serif", group: "Serif" },
+  { label: "Newsreader", value: "'Newsreader', serif", group: "Serif" },
+  { label: "Libre Caslon Display", value: "'Libre Caslon Display', serif", group: "Serif" },
+  { label: "Gilda Display", value: "'Gilda Display', serif", group: "Serif" },
+  { label: "Prata", value: "'Prata', serif", group: "Serif" },
+  { label: "Italiana", value: "'Italiana', serif", group: "Serif" },
+  { label: "Cinzel", value: "'Cinzel', serif", group: "Serif" },
+  { label: "Marcellus", value: "'Marcellus', serif", group: "Serif" },
+  { label: "Yeseva One", value: "'Yeseva One', serif", group: "Serif" },
+  { label: "Instrument Serif", value: "'Instrument Serif', serif", group: "Serif" },
+  { label: "Imbue", value: "'Imbue', serif", group: "Serif" },
+  { label: "Kalnia", value: "'Kalnia', serif", group: "Serif" },
+  { label: "Caprasimo", value: "'Caprasimo', serif", group: "Serif" },
+  { label: "Alfa Slab One", value: "'Alfa Slab One', serif", group: "Slab" },
+  { label: "Martian Mono", value: "'Martian Mono', monospace", group: "Mono" },
+  { label: "Geist Mono", value: "'Geist Mono', monospace", group: "Mono" },
+  { label: "Pinyon Script", value: "'Pinyon Script', cursive", group: "Script" },
+  { label: "Allura", value: "'Allura', cursive", group: "Script" },
+  { label: "Homemade Apple", value: "'Homemade Apple', cursive", group: "Script" },
+  { label: "Reenie Beanie", value: "'Reenie Beanie', cursive", group: "Script" },
+  { label: "Mansalva", value: "'Mansalva', cursive", group: "Handwritten" },
+  { label: "Gochi Hand", value: "'Gochi Hand', cursive", group: "Handwritten" },
+  { label: "Sedgwick Ave Display", value: "'Sedgwick Ave Display', cursive", group: "Handwritten" },
+];

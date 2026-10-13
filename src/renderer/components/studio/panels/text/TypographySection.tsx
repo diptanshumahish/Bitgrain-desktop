@@ -3,6 +3,7 @@ import { Dropdown } from "../../ui/dropdown";
 import type { DropdownOption } from "../../ui/dropdown";
 import { ScrubField } from "../../ui/panelPrimitives";
 import type { RichStyleProp, StyleField } from "../../rich-text/rich-text-types";
+import type { TextPreviewPatch } from "../../fonts/text-preview-signal";
 
 const DEFAULT_WEIGHTS: DropdownOption[] = [
   { label: "300 Light", value: "300" },
@@ -14,28 +15,35 @@ const DEFAULT_WEIGHTS: DropdownOption[] = [
   { label: "900 Black", value: "900" },
 ];
 
+const FONT_LIST_MAX_HEIGHT = 280;
+const MIN_FONT_SIZE = 4;
+const MAX_FONT_SIZE = 400;
+const MIN_LINE_HEIGHT = 0.5;
+const MAX_LINE_HEIGHT = 4;
+const LINE_HEIGHT_STEP = 0.05;
+const MIN_SPACING = -20;
+const MAX_SPACING = 100;
+const SPACING_STEP = 0.5;
+
 interface TypographySectionProps {
   fontOptions: DropdownOption[];
   weightOptions?: DropdownOption[];
-  availableStyles?: { normal: boolean; italic: boolean };
   familyField: StyleField<string>;
   weightField: StyleField<string>;
   sizeField: StyleField<number>;
-  italicField: StyleField<boolean>;
+  spacingField: StyleField<number>;
+  lineHeight: number;
   onApply: (prop: RichStyleProp, value: string) => void;
+  onPreview: (patch: TextPreviewPatch | null) => void;
+  onLineHeight: (lineHeight: number) => void;
 }
 
+const fieldNumber = (field: StyleField<number>): number => field.value ?? field.distinct[0] ?? 0;
+
 export const TypographySection: React.FC<TypographySectionProps> = ({
-  fontOptions, weightOptions, availableStyles, familyField, weightField, sizeField, italicField, onApply,
+  fontOptions, weightOptions, familyField, weightField, sizeField, spacingField, lineHeight, onApply, onPreview, onLineHeight,
 }) => {
   const weights = weightOptions && weightOptions.length > 0 ? weightOptions : DEFAULT_WEIGHTS;
-  const sizeValue = sizeField.value ?? sizeField.distinct[0] ?? 0;
-
-  // Built-in fonts (no availableStyles) ship both; custom fonts only expose what they have.
-  const canNormal = !availableStyles || availableStyles.normal;
-  const canItalic = !availableStyles || availableStyles.italic;
-  const showItalic = canNormal && canItalic;
-  const isItalic = italicField.value === true;
 
   return (
     <>
@@ -43,43 +51,47 @@ export const TypographySection: React.FC<TypographySectionProps> = ({
         options={fontOptions}
         value={familyField.value ?? ""}
         placeholder="Mixed"
-        onChange={(v) => onApply("fontFamily", v)}
-        maxHeight={280}
+        onChange={(value) => onApply("fontFamily", value)}
+        onPreview={(value) => onPreview(value ? { fontFamily: value } : null)}
+        maxHeight={FONT_LIST_MAX_HEIGHT}
         searchable
       />
-      <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0">
-          <Dropdown
-            options={weights}
-            value={weightField.value ?? ""}
-            placeholder="Mixed"
-            onChange={(v) => onApply("fontWeight", v)}
-          />
-        </div>
-        <div className="w-[80px] shrink-0">
-          <ScrubField
-            label="px"
-            value={sizeValue}
-            min={4}
-            max={400}
-            step={1}
-            onChange={(v) => onApply("fontSize", String(v))}
-          />
-        </div>
-        {showItalic && (
-          <button
-            type="button"
-            title="Italic"
-            onClick={() => onApply("fontStyle", isItalic ? "normal" : "italic")}
-            className={`w-8 h-[28px] rounded-md border flex items-center justify-center transition-colors shrink-0 ${
-              isItalic
-                ? "border-[var(--s-accent)] text-[var(--s-accent)] bg-[var(--s-accent-soft)]"
-                : "border-[var(--s-border)] text-[var(--s-text-muted)] hover:text-[var(--s-text)]"
-            }`}
-          >
-            <span className="text-[12px] italic font-semibold">I</span>
-          </button>
-        )}
+      <div className="grid grid-cols-2 gap-2">
+        <Dropdown
+          options={weights}
+          value={weightField.value ?? ""}
+          placeholder="Mixed"
+          onChange={(value) => onApply("fontWeight", value)}
+          onPreview={(value) => onPreview(value ? { fontWeight: value as TextPreviewPatch["fontWeight"] } : null)}
+        />
+        <ScrubField
+          label="Size"
+          value={fieldNumber(sizeField)}
+          min={MIN_FONT_SIZE}
+          max={MAX_FONT_SIZE}
+          step={1}
+          onChange={(value) => onApply("fontSize", String(value))}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <ScrubField
+          label="Line"
+          value={lineHeight}
+          min={MIN_LINE_HEIGHT}
+          max={MAX_LINE_HEIGHT}
+          step={LINE_HEIGHT_STEP}
+          decimals={2}
+          onChange={onLineHeight}
+        />
+        <ScrubField
+          label="Spacing"
+          value={fieldNumber(spacingField)}
+          min={MIN_SPACING}
+          max={MAX_SPACING}
+          step={SPACING_STEP}
+          decimals={1}
+          onChange={(value) => onApply("letterSpacing", String(value))}
+        />
       </div>
     </>
   );

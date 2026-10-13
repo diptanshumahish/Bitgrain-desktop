@@ -17,7 +17,7 @@ const matchMobileViewport = (): boolean => {
   return window.matchMedia?.("(max-width: 768px), (pointer: coarse)").matches ?? false;
 };
 
-const matchReducedMotion = (): boolean => {
+export const matchReducedMotion = (): boolean => {
   if (typeof window === "undefined") return false;
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 };

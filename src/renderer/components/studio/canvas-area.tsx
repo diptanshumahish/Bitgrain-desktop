@@ -32,6 +32,7 @@ import { useFrameDraw } from "./canvas/use-frame-draw";
 import { EmptyCanvasHint } from "./canvas/empty-canvas-hint";
 import { PlacementToolOverlay } from "./canvas/placement-tool";
 import { usePageDrag } from "./canvas/use-page-drag";
+import { usePagePressGuard } from "./canvas/use-page-press-guard";
 import { useDragSnap } from "./canvas/use-drag-snap";
 import { SnapGuidesOverlay } from "./canvas/snap-guides-overlay";
 import { hapticEdge } from "../../shell/haptics";
@@ -39,6 +40,11 @@ import { findDropTargetFrame, computeAbsoluteRect, findParentContainerId } from 
 import { findLayerById } from "../../utils/studio-layers";
 import { DEFAULT_FRAME_PRESET, type FramePreset } from "../../utils/frame-presets";
 import type { FrameRect } from "../../pages/studio-page/use-studio-pages";
+import { trackEvent } from "../../lib/tracker";
+import { useCanvasViewport } from "./canvas/use-canvas-viewport";
+import { useViewportSync } from "./canvas/use-viewport-sync";
+import { useZoomShortcuts } from "./canvas/use-zoom-shortcuts";
+import { useElementDrop } from "../../modules/elements/insert/use-element-drop";
 
 const WRAP_CHROME_SELECTOR =
   "button, input, select, textarea, [contenteditable], label, a, [data-popover-root]";
@@ -141,6 +147,13 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
   const activeBackground = activePage?.background ?? "#ffffff";
   const autoStrokeColor = useMemo(() => getContrastColor(activeBackground), [activeBackground]);
 
+  const viewport = useCanvasViewport({
+    wrapRef, panContainerRef, zoomContainerRef,
+    panRef: panZoom.panRef, zoomRef: panZoom.zoomRef, onZoomChange,
+  });
+  useViewportSync({ viewport, activePage, pageCount: pages.length });
+  useZoomShortcuts(viewport, activePage);
+
   const didMarqueeRef = useRef(false);
   const marquee = useMarqueeSelect({
     wrapRef,
@@ -189,6 +202,8 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
     resolveDropTarget,
     onCreated: selectCreatedFrame,
   });
+
+  useElementDrop({ wrapRef, zoomContainerRef, zoom, pages });
 
   const handleAddFramePreset = useCallback(
     (preset: FramePreset) => {
@@ -264,6 +279,12 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
     return { ...tools.vectorSettings, strokeColor: autoStrokeColor };
   }, [tools.vectorSettings, autoStrokeColor]);
 
+  const drawFlushRef = useRef<(() => void) | null>(null);
+  const activateDrawingPage = useCallback((pageId: string) => {
+    drawFlushRef.current?.();
+    onSelectPage(pageId);
+  }, [onSelectPage]);
+
   const handleVectorFinish = useCallback((anchors: BezierAnchor[], closed: boolean) => {
     if (anchors.length < 2) return;
     onAddVector(anchors, closed, effectiveVectorSettings);
@@ -280,6 +301,7 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
   }, [onAddInk, effectiveVectorSettings]);
 
   const { didPanRef } = panZoom;
+  const pagePressGuard = usePagePressGuard();
   const handleWrapClick = useCallback(() => {
     if (didMarqueeRef.current) didMarqueeRef.current = false;
     if (didPanRef.current) didPanRef.current = false;
@@ -369,6 +391,7 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
                   label={pageLabel}
                   isActive={isActivePage}
                   zoom={zoom}
+                  pageWidth={page.width}
                   onRename={(name) => onRenamePage?.(page.id, name)}
                   onPointerDown={(event) => pageDrag.handlePageTitlePointerDown(event, page)}
                   onPointerMove={pageDrag.handlePageTitlePointerMove}
@@ -382,8 +405,11 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
                     background: page.background,
                     isolation: "isolate",
                   }}
+                  onPointerDownCapture={pagePressGuard.onPointerDownCapture}
+                  onPointerDown={pagePressGuard.onPointerDown}
                   onClick={(event) => {
                     event.stopPropagation();
+                    if (!pagePressGuard.consumePagePress()) return;
                     if (vectorEditingId) onEndVectorEdit();
                     onSelectPage(page.id);
                     onSelectLayer(null);
@@ -420,7 +446,7 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
                     onLayerContextMenu={onLayerContextMenu}
                     onReparentCheck={handleReparentCheck}
                   />
-                  {isActivePage && tools.drawingMode && (
+                  {tools.drawingMode && (
                     <VectorPenTool
                       active={tools.drawingMode}
                       canvasW={page.width}
@@ -428,11 +454,13 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
                       zoom={zoom}
                       isSpacePressed={() => panZoom.isSpacePressedRef.current}
                       settings={effectiveVectorSettings}
-                      anchorColor={autoStrokeColor}
+                      isActivePage={isActivePage}
+                      flushRef={drawFlushRef}
+                      onActivatePage={() => activateDrawingPage(page.id)}
                       onFinish={handleVectorFinish}
                     />
                   )}
-                  {isActivePage && (tools.pencilMode || tools.brushMode) && (
+                  {(tools.pencilMode || tools.brushMode) && (
                     <PencilTool
                       active={tools.pencilMode || tools.brushMode}
                       canvasW={page.width}
@@ -441,17 +469,22 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
                       isSpacePressed={() => panZoom.isSpacePressedRef.current}
                       settings={effectiveVectorSettings}
                       inkMode={tools.brushMode}
+                      isActivePage={isActivePage}
+                      flushRef={drawFlushRef}
+                      onActivatePage={() => activateDrawingPage(page.id)}
                       onStrokeFinished={handlePencilStroke}
                       onInkFinish={handleInkFinish}
                     />
                   )}
-                  {isActivePage && tools.placementTool && (
+                  {tools.placementTool && (
                     <PlacementToolOverlay
                       tool={tools.placementTool}
                       canvasW={page.width}
                       canvasH={page.height}
                       zoom={zoom}
                       isSpacePressed={() => panZoom.isSpacePressedRef.current}
+                      isActivePage={isActivePage}
+                      onActivatePage={() => activateDrawingPage(page.id)}
                       onPlace={handlePlace}
                     />
                   )}
@@ -509,7 +542,7 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
 
       {marquee.marqueeRect && (
         <div
-          className="absolute z-[60] pointer-events-none border border-[var(--s-accent)] bg-[var(--s-accent)]/10"
+          className="absolute z-[60] pointer-events-none border border-[var(--s-canvas-selection)] bg-[var(--s-canvas-selection)]/10"
           style={{
             left: marquee.marqueeRect.left,
             top: marquee.marqueeRect.top,
@@ -521,7 +554,7 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
 
       {frameDraw.framePreviewRect && (
         <div
-          className="absolute z-[60] pointer-events-none border border-dashed border-[var(--s-accent)] bg-[var(--s-accent)]/5"
+          className="absolute z-[60] pointer-events-none border border-dashed border-[var(--s-canvas-selection)] bg-[var(--s-canvas-selection)]/5"
           style={{
             left: frameDraw.framePreviewRect.left,
             top: frameDraw.framePreviewRect.top,
@@ -558,6 +591,7 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
         placementTool={tools.placementTool}
         onStartTextPlacement={() => tools.selectPlacement({ kind: "text" })}
         onStartShapePlacement={(type) => tools.selectPlacement({ kind: "shape", shapeType: type })}
+        onAddRectangle={() => onAddShape("rect")}
         onExitPlacement={tools.clearPlacement}
         onAddImage={onAddImage}
         onAddAdjustment={onAddAdjustment}
@@ -573,8 +607,11 @@ export const CanvasArea = (props: CanvasAreaProps): React.ReactElement => {
         width={activePage?.width ?? template.width}
         height={activePage?.height ?? template.height}
         zoom={zoom}
-        onZoomChange={onZoomChange}
-        onZoomFit={() => onZoomChange(0.7)}
+        onZoomChange={viewport.zoomTo}
+        onZoomFit={() => {
+          trackEvent("studio", "zoom_fit", { details: { source: "status_bar" } });
+          if (activePage) viewport.fitToRect(activePage);
+        }}
         onAnimate={onAnimate}
         animationActive={animationActive}
       />

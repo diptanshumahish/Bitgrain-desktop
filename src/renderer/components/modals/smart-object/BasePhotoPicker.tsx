@@ -5,6 +5,7 @@ import { slotToCorners } from "../../../engine/mockup/slot-corners";
 import { DEFAULT_CORNERS } from "../../../engine/mockup/mockup-types";
 import type { BackendMockup } from "../mockups-api";
 import type { MockupQuad } from "../../../engine/mockup/mockup-types";
+import { trackEvent } from "../../../lib/tracker";
 
 interface BasePhotoPickerProps {
   dark: boolean;
@@ -35,6 +36,7 @@ export const BasePhotoPicker: React.FC<BasePhotoPickerProps> = ({ dark, onSelect
       const image = await loadImage(objectUrl);
       await image.decode();
       onSelect(image, DEFAULT_CORNERS);
+      trackEvent("studio", "mockup_base_photo_chosen", { details: { source: "upload" } });
     } catch {
       return;
     } finally {
@@ -48,6 +50,7 @@ export const BasePhotoPicker: React.FC<BasePhotoPickerProps> = ({ dark, onSelect
       const aspectRatio = image.naturalWidth / image.naturalHeight;
       const corners = mockup.slot.corners ?? slotToCorners(mockup.slot, aspectRatio);
       onSelect(image, corners);
+      trackEvent("studio", "mockup_base_photo_chosen", { details: { source: "catalog", mockup_id: mockup.id } });
     } catch {
       /* skip mockups whose base asset fails to load */
     }

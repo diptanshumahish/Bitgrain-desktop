@@ -2,6 +2,7 @@ import { captureSnapshot } from "../../store/transform-store";
 import { emitModal } from "../../lib/event-bus";
 import { userSignal } from "../../hooks/useAuth";
 import { publishRecipe } from "./recipes-api";
+import { remixParentSignal } from "./remix-parent-store";
 
 const CANVAS_ID = "transformation-output-canvas";
 const THUMB_MAX_EDGE = 480;
@@ -25,6 +26,19 @@ const showResult = (title: string, message: string): void => {
   emitModal({ type: "confirm", title, message, confirmLabel: "ok", onConfirm: () => undefined });
 };
 
+const handlePublishFailed = (): void => {
+  showResult("couldn't publish", "something went wrong, try again.");
+};
+
+const handlePublished = (result: { id: string } | null): void => {
+  if (!result) {
+    handlePublishFailed();
+    return;
+  }
+  remixParentSignal.value = null;
+  showResult("published", "your look is live in community recipes.");
+};
+
 export const publishCurrentLook = (): void => {
   emitModal({
     type: "prompt",
@@ -36,27 +50,15 @@ export const publishCurrentLook = (): void => {
     onSubmit: (value) => {
       const name = value.trim();
       if (!name) return;
-      const snap = captureSnapshot();
       publishRecipe({
         name,
         authorName: userSignal.value?.name || undefined,
         thumbnail: captureThumbnail(),
-        recipe: {
-          modes: snap.modes,
-          ditherMethod: snap.ditherMethod,
-          ditherFactor: snap.ditherFactor,
-          resolution: snap.resolution,
-          contrast: snap.contrast,
-          brightness: snap.brightness,
-          saturation: snap.saturation,
-          grain: snap.grain,
-          hue: snap.hue,
-          isColor: snap.isColor,
-          paletteId: snap.palette?.id ?? null,
-        },
+        recipe: captureSnapshot(),
+        parentId: remixParentSignal.value ?? undefined,
       })
-        .then(() => showResult("published", "your look is live in community recipes."))
-        .catch(() => showResult("couldn't publish", "something went wrong, try again."));
+        .then(handlePublished)
+        .catch(handlePublishFailed);
     },
   });
 };
