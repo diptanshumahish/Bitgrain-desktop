@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { X, LogOut, ExternalLink } from "lucide-react";
-import { useSignalValue } from "../../lib/signal";
-import { userSignal, logout } from "../../hooks/useAuth";
-import { accountCreditsSignal } from "../../store/user-credits-store";
+import { useSignalValue } from "@bitgrain/core/signal";
+import { userSignal, logout } from "@bitgrain/platform/auth/use-auth";
+import { accountCreditsSignal } from "@bitgrain/platform/account/user-credits-store";
 import { settingsOpenSignal, closeSettings } from "../../store/account-store";
-import { getAvatarGlyph } from "../../lib/avatar-glyphs";
-import { useAvatar } from "../../hooks/useAvatar";
+import { getAvatarGlyph } from "@bitgrain/ui/avatar/avatar-glyphs";
+import { useAvatar } from "./useAvatar";
 
 const MANAGE_URL = "https://bitgrain.app/account";
 

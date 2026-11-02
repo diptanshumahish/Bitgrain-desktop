@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useSignalValue } from "../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { videoToastSignal, clearToast } from "../utils/video-toast";
 
 const VISIBLE_MS = 2600;

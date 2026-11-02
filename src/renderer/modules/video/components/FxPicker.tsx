@@ -2,8 +2,8 @@ import React from "react";
 import { Aperture } from "lucide-react";
 import { addEffectClipAtPlayhead } from "../utils/timeline-actions";
 import { EffectMenu } from "./panels/effects/effect-menu";
-import { Tooltip } from "../../../components/studio/ui/Tooltip";
-import { emitPopover } from "../../../lib/event-bus";
+import { Tooltip } from "@bitgrain/ui/controls/panel/Tooltip";
+import { emitPopover } from "@bitgrain/ui/overlays/popover-events";
 
 export const FxPicker: React.FC = () => {
   const openMenu = (event: React.MouseEvent<HTMLButtonElement>) => {

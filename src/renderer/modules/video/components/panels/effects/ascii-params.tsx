@@ -1,11 +1,11 @@
 import React from "react";
-import type { AsciiTone } from "../../../../../engine/types";
+import type { AsciiTone } from "@bitgrain/engine/core/types";
 import {
   ASCII_DETAILED,
   ASCII_CODE,
   ASCII_STANDARD,
   ASCII_BLOCKS,
-} from "../../../../../engine/plugins/ascii";
+} from "@bitgrain/engine/plugins/ascii";
 import type { EffectParams } from "../../../types";
 import { SliderRow } from "./SliderRow";
 import { Toggle } from "./filter-shared";

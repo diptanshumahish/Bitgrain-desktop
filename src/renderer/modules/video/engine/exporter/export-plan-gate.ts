@@ -1,4 +1,4 @@
-import { getPlanLimits, type VideoResolution } from "../../../../config/plan-limits";
+import { getPlanLimits, type VideoResolution } from "@bitgrain/platform/plans/plan-limits";
 
 const MAX_SHORT_EDGE_BY_RESOLUTION: Record<VideoResolution, number> = {
   "720p": 720,

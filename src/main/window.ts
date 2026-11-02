@@ -89,7 +89,8 @@ export function createMainWindow(): BrowserWindow {
   lockDownBrowserBehaviour(window);
 
   window.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    const external = toExternalUrl(url, window.webContents.getURL());
+    if (external) void shell.openExternal(external);
     return { action: "deny" };
   });
 
@@ -134,4 +135,23 @@ function lockDownBrowserBehaviour(window: BrowserWindow): void {
   contents.on("did-finish-load", () => {
     void contents.setVisualZoomLevelLimits(1, 1);
   });
+}
+
+const WEB_ORIGIN = "https://bitgrain.app";
+
+// Ported web code opens its own pages in a new window (`window.open("/docs/...")`).
+// Those resolve against the app's own origin, so they are rewritten to the same
+// path on bitgrain.app. Anything that is not http(s) is never handed to the OS.
+function toExternalUrl(url: string, appUrl: string): string | null {
+  let target: URL;
+  try {
+    target = new URL(url, appUrl);
+  } catch {
+    return null;
+  }
+  const appOrigin = appUrl ? new URL(appUrl).origin : "";
+  if (target.origin === appOrigin || target.protocol === "app:") {
+    return `${WEB_ORIGIN}${target.pathname}${target.search}${target.hash}`;
+  }
+  return target.protocol === "https:" || target.protocol === "http:" ? target.toString() : null;
 }

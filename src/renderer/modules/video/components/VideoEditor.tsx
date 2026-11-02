@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { useSignalValue } from "../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import {
   currentProjectSignal,
   projectLoadingSignal,
@@ -46,7 +46,7 @@ import {
   restoreWorkspace,
   COLLAPSED_TIMELINE_HEIGHT,
 } from "../store/workspace-layout-store";
-import { PopoverPortal } from "../../../components/portal/PopoverPortal";
+import { PopoverPortal } from "@bitgrain/ui/overlays/PopoverPortal";
 
 export const VideoEditor: React.FC = () => {
   const project = useSignalValue(currentProjectSignal);

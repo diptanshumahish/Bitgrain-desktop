@@ -3,6 +3,16 @@ import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+// The web repo is a monorepo whose editors live in `packages/*` and import each
+// other as `@bitgrain/<package>/<path>`. The desktop vendors those packages under
+// `src/renderer/packages/`, and `@bitgrain/video` resolves to the desktop-owned
+// video fork. See PORTED.md.
+const RENDERER_ROOT = resolve("src/renderer");
+const bitgrainWorkspaceAlias = [
+  { find: /^@bitgrain\/video\/(.*)$/, replacement: `${RENDERER_ROOT}/modules/video/$1` },
+  { find: /^@bitgrain\/([a-z-]+)\/(.*)$/, replacement: `${RENDERER_ROOT}/packages/$1/$2` },
+];
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
@@ -11,6 +21,9 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
   },
   renderer: {
+    resolve: {
+      alias: bitgrainWorkspaceAlias,
+    },
     plugins: [react(), tailwindcss()],
     worker: {
       format: "es",

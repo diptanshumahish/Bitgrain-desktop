@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useSignalValue } from "../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { currentProjectSignal, updateProject } from "../store/project-store";
 import { getMediaBlob } from "../utils/media-blob-store";
 import { extractWaveform } from "../engine/extract-waveform";

@@ -1,5 +1,5 @@
-import { runTransform } from "../../../../engine/engine";
-import type { TransformMode } from "../../../../engine/types";
+import { runTransform } from "@bitgrain/engine/core/engine";
+import type { TransformMode } from "@bitgrain/engine/core/types";
 import type { EffectParams } from "../../types";
 import { buildTransformContext } from "../build-transform-context";
 import { charGridFor, lastCharMode, renderCharFrame } from "../char-raster";

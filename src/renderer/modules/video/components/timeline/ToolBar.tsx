@@ -7,7 +7,7 @@ import {
   MoveHorizontal,
   SquareSplitHorizontal,
 } from "lucide-react";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import {
   activeToolSignal,
   setTool,

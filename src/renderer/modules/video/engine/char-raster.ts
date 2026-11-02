@@ -1,7 +1,7 @@
-import { runTransform } from "../../../engine/engine";
-import type { AsciiTone, TransformMode } from "../../../engine/types";
-import { ASCII_CELL_W, ASCII_CELL_H, ASCII_TARGET_COLS } from "../../../engine/plugins/ascii";
-import { BRAILLE_CELL_W, BRAILLE_CELL_H, BRAILLE_TARGET_COLS } from "../../../engine/plugins/braille";
+import { runTransform } from "@bitgrain/engine/core/engine";
+import type { AsciiTone, TransformMode } from "@bitgrain/engine/core/types";
+import { ASCII_CELL_W, ASCII_CELL_H, ASCII_TARGET_COLS } from "@bitgrain/engine/plugins/ascii";
+import { BRAILLE_CELL_W, BRAILLE_CELL_H, BRAILLE_TARGET_COLS } from "@bitgrain/engine/plugins/braille";
 import type { EffectParams } from "../types";
 import { buildTransformContext, type ContextSeeds } from "./build-transform-context";
 

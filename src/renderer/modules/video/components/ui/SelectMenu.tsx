@@ -1,6 +1,6 @@
 import React, { useId, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { signal, useSignalValue } from "../../../../lib/signal";
+import { signal, useSignalValue } from "@bitgrain/core/signal";
 const openMenuIdSignal = signal<string | null>(null);
 
 export interface SelectOption {

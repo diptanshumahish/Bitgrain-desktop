@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { Plus, UploadCloud } from "lucide-react";
 import { updateProject } from "../../store/project-store";
 import { importMediaFiles } from "../../utils/import-media";
-import { trackEvent } from "../../../../lib/tracker";
+import { trackEvent } from "@bitgrain/platform/tracker";
 
 interface MediaImporterProps {
   iconOnly?: boolean;

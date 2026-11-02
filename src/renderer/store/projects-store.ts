@@ -1,7 +1,8 @@
-import { signal } from "../lib/signal";
-import type { ImageMeta } from "../components/ImageMetaPanel";
-import { imageSignal, imageMetaSignal } from "./image-store";
-import { captureSnapshot, type TransformSnapshot } from "./transform-store";
+import { signal } from "@bitgrain/core/signal";
+import type { ImageMeta } from "@bitgrain/darkroom/state/image-meta";
+import { imageSignal, imageMetaSignal } from "@bitgrain/darkroom/state/image-store";
+import { captureSnapshot } from "@bitgrain/darkroom/state/transform-store";
+import type { TransformSnapshot } from "@bitgrain/engine/core/transform-snapshot";
 import type { InstanceRecord } from "../../shared/bridge";
 import {
   activeTab,

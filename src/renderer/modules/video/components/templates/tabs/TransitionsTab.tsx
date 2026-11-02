@@ -1,8 +1,8 @@
 import React from "react";
 import { TRANSITION_PRESETS } from "../../../templates/transitions";
 import { applyTransitionToSelected } from "../../../templates/apply-transition";
-import { emitPopover } from "../../../../../lib/event-bus";
-import { useSignalValue } from "../../../../../lib/signal";
+import { emitPopover } from "@bitgrain/ui/overlays/popover-events";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { selectedClipIdSignal } from "../../../store/project-store";
 import { TransitionPreview } from "../previews/TransitionPreview";
 

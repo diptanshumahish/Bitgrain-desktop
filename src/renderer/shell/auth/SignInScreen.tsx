@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { loginWithEmail } from "../../hooks/useAuth";
+import { loginWithEmail } from "@bitgrain/platform/auth/use-auth";
 
 const SIGNUP_URL = "https://bitgrain.app/sign-in";
 

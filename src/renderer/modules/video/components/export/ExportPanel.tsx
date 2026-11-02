@@ -1,5 +1,5 @@
 import React from "react";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import {
   exportPanelOpenSignal,
   exportProgressSignal,
@@ -31,8 +31,8 @@ import { FPS_PRESETS } from "../../constants";
 import { Modal } from "../Modal";
 import { ExportSummaryCard } from "./ExportSummaryCard";
 import { ExportProgressBar } from "./ExportProgressBar";
-import { trackEvent } from "../../../../lib/tracker";
-import { useUser } from "../../../../hooks/useUser";
+import { trackEvent } from "@bitgrain/platform/tracker";
+import { useUser } from "@bitgrain/platform/account/use-user";
 import { maxVideoShortEdge } from "../../engine/exporter/export-plan-gate";
 import { resolveExportRange, rangeDuration } from "../../engine/exporter/support/export-range";
 import { ExportResolutionField } from "./ExportResolutionField";

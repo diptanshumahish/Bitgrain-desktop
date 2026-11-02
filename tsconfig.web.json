@@ -1,7 +1,5 @@
 {
   "compilerOptions": {
-    "composite": true,
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.web.tsbuildinfo",
     "target": "ES2023",
     "useDefineForClassFields": true,
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
@@ -21,7 +19,19 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    "paths": {
+      "@bitgrain/core/*": ["./src/renderer/packages/core/*"],
+      "@bitgrain/api/*": ["./src/renderer/packages/api/*"],
+      "@bitgrain/ui/*": ["./src/renderer/packages/ui/*"],
+      "@bitgrain/engine/*": ["./src/renderer/packages/engine/*"],
+      "@bitgrain/studio-core/*": ["./src/renderer/packages/studio-core/*"],
+      "@bitgrain/platform/*": ["./src/renderer/packages/platform/*"],
+      "@bitgrain/darkroom/*": ["./src/renderer/packages/darkroom/*"],
+      "@bitgrain/studio/*": ["./src/renderer/packages/studio/*"],
+      "@bitgrain/video/*": ["./src/renderer/modules/video/*"]
+    }
   },
   "include": ["src/renderer", "src/shared"]
 }

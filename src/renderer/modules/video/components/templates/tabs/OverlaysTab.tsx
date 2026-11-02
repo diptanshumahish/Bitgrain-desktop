@@ -1,7 +1,7 @@
 import React from "react";
 import { OVERLAY_TEMPLATES } from "../../../templates/overlay-templates";
 import { applyOverlayParts } from "../../../templates/apply-text";
-import { emitPopover } from "../../../../../lib/event-bus";
+import { emitPopover } from "@bitgrain/ui/overlays/popover-events";
 import { OverlayPreview } from "../previews/OverlayPreview";
 
 export const OverlaysTab: React.FC = () => (

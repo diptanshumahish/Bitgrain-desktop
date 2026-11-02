@@ -1,4 +1,4 @@
-import type { TransformMode } from "../../../../engine/types";
+import type { TransformMode } from "@bitgrain/engine/core/types";
 import type { EffectParams, Keyframe } from "../../types";
 import type { ActiveEffect } from "../frame-source";
 import { interpolateKeyframes } from "../../utils/keyframes";

@@ -4,7 +4,7 @@ import {
   currentProjectSignal,
   selectedClipIdSignal,
 } from "../../store/project-store";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { currentTimeSignal } from "../../store/timeline-store";
 import {
   findFxClip,
@@ -14,7 +14,7 @@ import {
 } from "../../utils/clip-edits/effect-clip-edits";
 import { addEffectToClip, removeEffectFromClip } from "../../utils/timeline-actions";
 import { EffectMenu } from "./effects/effect-menu";
-import { emitPopover } from "../../../../lib/event-bus";
+import { emitPopover } from "@bitgrain/ui/overlays/popover-events";
 import type { EffectApplication, EffectClip, EffectParams } from "../../types";
 import { SliderRow } from "./effects/SliderRow";
 import { TransformSection } from "./effects/TransformSection";

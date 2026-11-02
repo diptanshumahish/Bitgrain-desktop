@@ -3,7 +3,7 @@ import {
   Play, Pause, SkipBack, SkipForward, ChevronLeft, ChevronRight,
   Repeat, Maximize, Minimize,
 } from "lucide-react";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import {
   isPlayingSignal,
   togglePlaying,
@@ -14,7 +14,7 @@ import { currentTimeSignal, setCurrentTime } from "../../store/timeline-store";
 import { currentProjectSignal } from "../../store/project-store";
 import { isFullscreenSignal, toggleFullscreen } from "../../store/fullscreen-store";
 import { formatTimecode, frameAt, totalFrames } from "../../utils/time-format";
-import { Tooltip } from "../../../../components/studio/ui/Tooltip";
+import { Tooltip } from "@bitgrain/ui/controls/panel/Tooltip";
 
 interface TransportButtonProps {
   label: string;

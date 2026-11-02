@@ -1,13 +1,13 @@
-import { runTransform } from "../engine/engine";
-import { encodePng } from "../engine/export/encode-image";
-import { buildTransformContext } from "../utils/bitgrain-effect-core";
+import { runTransform } from "@bitgrain/engine/core/engine";
+import { encodePng } from "@bitgrain/engine/export/encode-image";
+import { buildTransformContext } from "@bitgrain/studio-core/effects/bitgrain/bitgrain-effect-core";
 import {
   runBandedInProcess,
   type BandTransformSpec,
-} from "../engine/parallel/band-runner";
-import { runBandedPooled } from "../engine/parallel/band-pool";
-import type { BitgrainEffect } from "../data/studioTypes";
-import type { TransformMode } from "../engine/types";
+} from "../parallel/band-runner";
+import { runBandedPooled } from "../parallel/band-pool";
+import type { BitgrainEffect } from "@bitgrain/studio-core/model/studio-types";
+import type { TransformMode } from "@bitgrain/engine/core/types";
 
 interface RenderRequest {
   imageUrl: string;

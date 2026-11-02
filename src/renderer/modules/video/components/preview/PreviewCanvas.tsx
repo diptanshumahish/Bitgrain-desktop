@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import {
   currentProjectSignal,
   projectRevisionSignal,

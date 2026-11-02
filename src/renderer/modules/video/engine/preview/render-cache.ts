@@ -1,4 +1,4 @@
-import { signal } from "../../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 import { projectRevisionSignal } from "../../store/project-store";
 import { assetEpochSignal } from "./asset-epoch";
 

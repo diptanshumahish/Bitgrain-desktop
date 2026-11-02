@@ -1,6 +1,6 @@
 import React from "react";
 import { TRACK_HEADER_WIDTH } from "../../constants";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { currentTimeSignal } from "../../store/timeline-store";
 
 interface PlayheadProps {

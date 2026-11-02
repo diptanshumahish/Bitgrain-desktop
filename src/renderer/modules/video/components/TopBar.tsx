@@ -1,8 +1,8 @@
 import React from "react";
 import { Undo2, Redo2, Moon, Sun } from "lucide-react";
-import { useSignalValue } from "../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { currentProjectSignal } from "../store/project-store";
-import { themeSignal, toggleTheme } from "../../../store/global-theme-store";
+import { themeSignal, toggleTheme } from "@bitgrain/ui/theme/global-theme-store";
 import {
   undo,
   redo,
@@ -10,7 +10,7 @@ import {
   canRedoSignal,
 } from "../store/video-history-store";
 import { EditableTitle } from "./EditableTitle";
-import { Tooltip } from "../../../components/studio/ui/Tooltip";
+import { Tooltip } from "@bitgrain/ui/controls/panel/Tooltip";
 
 interface IconButtonProps {
   label: string;

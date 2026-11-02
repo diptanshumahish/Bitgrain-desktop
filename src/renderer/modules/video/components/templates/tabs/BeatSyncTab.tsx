@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { useSignalValue } from "../../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { beatStateSignal } from "../../../templates/beat-state";
 import {
   analyzeBeatsForTimelineAudio,
@@ -7,7 +7,7 @@ import {
   pulseTextAtBeats,
   sliceVideoAtBeats,
 } from "../../../templates/apply-beats";
-import { emitPopover } from "../../../../../lib/event-bus";
+import { emitPopover } from "@bitgrain/ui/overlays/popover-events";
 import { BeatsPreview } from "../previews/BeatsPreview";
 
 function describeStatus(status: string, beatCount: number, message?: string): string {

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Plus, X } from "lucide-react";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { currentProjectSignal } from "../../store/project-store";
 import { timeToPx } from "./timeline-math";
 import {

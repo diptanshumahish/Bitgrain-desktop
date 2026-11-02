@@ -1,12 +1,12 @@
 import React from "react";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import {
   exportPanelOpenSignal,
   exportProgressSignal,
   resetExportProgress,
 } from "../../engine/exporter/export-types";
 import { computeEtaSeconds, formatEta } from "../../engine/exporter/eta";
-import { trackEvent } from "../../../../lib/tracker";
+import { trackEvent } from "@bitgrain/platform/tracker";
 
 const STATUS_GLYPH: Record<string, string> = {
   recording: "[..]",

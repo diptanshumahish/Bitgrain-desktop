@@ -20,10 +20,10 @@ import {
 import { preloadProjectFonts } from "../../utils/font-loader";
 import { resolveExportRange, rangeDuration } from "./support/export-range";
 import { clampVideoDimensions, planRequiresVideoWatermark } from "./export-plan-gate";
-import { drawWatermarkPill, preloadWatermarkLogo } from "../../../../engine/watermark";
-import { emitModal } from "../../../../lib/event-bus";
-import { registerWatermarkedExport, shouldPromptUpgrade } from "../../../../utils/upgrade-prompt";
-import { trackEvent } from "../../../../lib/tracker";
+import { drawWatermarkTag, preloadWatermarkLogo } from "@bitgrain/engine/watermark/watermark";
+import { emitPlatformModal } from "@bitgrain/platform/modals/platform-modal-events";
+import { registerWatermarkedExport, shouldPromptUpgrade } from "@bitgrain/platform/plans/upgrade-prompt";
+import { trackEvent } from "@bitgrain/platform/tracker";
 
 const SETTLE_MS = 250;
 const RECORDER_TIMESLICE_MS = 250;
@@ -115,7 +115,7 @@ export async function startMediaRecorderExport(plan: string): Promise<void> {
     const ctx = target.getContext("2d");
     if (ctx) {
       ctx.drawImage(canvas, 0, 0, target.width, target.height);
-      if (watermark) drawWatermarkPill(ctx, target.width, target.height, watermarkLogo);
+      if (watermark) drawWatermarkTag(ctx, target.width, target.height, watermarkLogo);
     }
     compositeRaf = requestAnimationFrame(drawComposite);
   };
@@ -179,7 +179,7 @@ export async function startMediaRecorderExport(plan: string): Promise<void> {
         details: { context: "video_export", format: "webm", plan },
       });
       if (shouldPromptUpgrade(registerWatermarkedExport())) {
-        emitModal({
+        emitPlatformModal({
           type: "post-export-upgrade",
           requestedLongEdge: Math.max(canvas.width, canvas.height),
           deliveredLongEdge: Math.max(captureSource.width, captureSource.height),

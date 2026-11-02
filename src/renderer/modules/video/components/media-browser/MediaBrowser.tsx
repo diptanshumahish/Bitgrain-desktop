@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { currentProjectSignal, updateProject } from "../../store/project-store";
 import { importMediaFiles } from "../../utils/import-media";
 import { MediaImporter } from "./MediaImporter";
 import { MediaTile } from "./MediaTile";
-import { trackEvent } from "../../../../lib/tracker";
+import { trackEvent } from "@bitgrain/platform/tracker";
 
 interface MediaBrowserProps {
   width: number;

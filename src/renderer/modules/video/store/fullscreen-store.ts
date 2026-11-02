@@ -1,4 +1,4 @@
-import { signal } from "../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 
 export const previewContainerSignal = signal<HTMLElement | null>(null);
 export const isFullscreenSignal = signal(false);

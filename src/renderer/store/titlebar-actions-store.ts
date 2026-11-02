@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { signal } from "../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 
 // The right side of the title bar shows the active document's contextual actions
 // (export, share, present). Every surface stays mounted, so actions are keyed by

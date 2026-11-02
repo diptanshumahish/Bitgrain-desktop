@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Settings, LogOut, ChevronDown } from "lucide-react";
-import { useSignalValue } from "../../lib/signal";
-import { userSignal, logout } from "../../hooks/useAuth";
+import { useSignalValue } from "@bitgrain/core/signal";
+import { userSignal, logout } from "@bitgrain/platform/auth/use-auth";
 import { openSettings } from "../../store/account-store";
-import { getAvatarGlyph } from "../../lib/avatar-glyphs";
-import { useAvatar } from "../../hooks/useAvatar";
+import { getAvatarGlyph } from "@bitgrain/ui/avatar/avatar-glyphs";
+import { useAvatar } from "./useAvatar";
 
 const NO_DRAG = "[-webkit-app-region:no-drag]";
 

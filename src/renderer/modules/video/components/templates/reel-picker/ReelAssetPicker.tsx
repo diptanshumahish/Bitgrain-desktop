@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { ChevronLeft } from "lucide-react";
-import { useSignalValue } from "../../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { currentProjectSignal } from "../../../store/project-store";
-import { emitPopover } from "../../../../../lib/event-bus";
+import { emitPopover } from "@bitgrain/ui/overlays/popover-events";
 import type { MediaAsset } from "../../../types";
 import type { VideoReelTemplate } from "../../../templates/reel-types";
 import { applyReelTemplate } from "../../../templates/apply-reel";

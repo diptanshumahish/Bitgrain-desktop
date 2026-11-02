@@ -1,4 +1,4 @@
-import { signal } from "../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 import { newId } from "./id";
 import { putMediaBlob, getMediaBlob } from "./media-blob-store";
 

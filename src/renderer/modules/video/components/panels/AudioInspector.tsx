@@ -5,7 +5,7 @@ import {
   selectedClipIdSignal,
   updateProject,
 } from "../../store/project-store";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import type { AudioClip, AudioTrack } from "../../types";
 import { Toggle } from "./effects/filter-shared";
 import { EqControls } from "./EqControls";

@@ -1,6 +1,6 @@
 import { Plus, X, House, Aperture, Layers, Film } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { signal, useSignalValue } from "../lib/signal";
+import { signal, useSignalValue } from "@bitgrain/core/signal";
 import {
   documentTabsSignal,
   activeTabIdSignal,

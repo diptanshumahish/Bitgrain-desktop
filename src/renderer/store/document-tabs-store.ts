@@ -1,20 +1,20 @@
-import { signal } from "../lib/signal";
-import type { ImageMeta } from "../components/ImageMetaPanel";
+import { signal } from "@bitgrain/core/signal";
+import type { ImageMeta } from "@bitgrain/darkroom/state/image-meta";
 import {
   imageSignal,
   isSampleSignal,
   imageMetaSignal,
   previewLoadingSignal,
   objectUrlRef,
-} from "./image-store";
+} from "@bitgrain/darkroom/state/image-store";
 import {
   captureSnapshot,
   applySnapshot,
-  type TransformSnapshot,
-} from "./transform-store";
+} from "@bitgrain/darkroom/state/transform-store";
+import type { TransformSnapshot } from "@bitgrain/engine/core/transform-snapshot";
 
 import { newInstanceId } from "./workspace-store";
-import type { TemplateDef } from "../data/studioTypes";
+import type { TemplateDef } from "@bitgrain/studio-core/model/studio-types";
 
 export type TabKind = "home" | "darkroom" | "studio" | "video";
 

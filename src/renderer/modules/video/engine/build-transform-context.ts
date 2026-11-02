@@ -1,7 +1,7 @@
-import type { TransformContext } from "../../../engine/types";
+import type { TransformContext } from "@bitgrain/engine/core/types";
 import type { EffectParams } from "../types";
 import { hexToRgbTuple } from "../utils/color-parse";
-import { orientRamp, ASCII_DETAILED } from "../../../engine/plugins/ascii";
+import { orientRamp, ASCII_DETAILED } from "@bitgrain/engine/plugins/ascii";
 
 const POPART_DEFAULT_INK: [number, number, number] = [220, 38, 38];
 const POPART_DEFAULT_PAPER: [number, number, number] = [10, 10, 10];

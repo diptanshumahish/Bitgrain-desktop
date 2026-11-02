@@ -1,38 +1,50 @@
+import { Suspense } from "react";
 import { HashRouter as Router } from "react-router-dom";
+import { DialogHost } from "@bitgrain/ui/dialogs/DialogHost";
+import { DarkroomModalHost } from "@bitgrain/darkroom/modals/DarkroomModalHost";
+import { StudioModalHost } from "@bitgrain/studio/modals/studio-dialog/host/StudioModalHost";
+import { StatusToastPortal } from "@bitgrain/ui/overlays/status-toast/StatusToastPortal";
+import { UndoToastPortal } from "@bitgrain/ui/overlays/undo-toast/UndoToastPortal";
+import { RemovalProgressPortal } from "@bitgrain/darkroom/background-removal/components/removal-progress-portal";
+import { ElementLibraryPortal } from "@bitgrain/studio/features/elements/library/components/element-library-portal";
+import { MoshToastPortal } from "./web/app/shell/mosh-toast/MoshToastPortal";
+import { ExportProgressPortal } from "./web/app/shell/portals/ExportProgressPortal";
+import { TemplatePreviewPortal } from "./web/features/templates/preview-portal/TemplatePreviewPortal";
+import { WelcomePortal } from "./web/features/onboarding/welcome/WelcomePortal";
+import { AnnouncementPortal } from "./web/features/announcements/components/announcement-portal";
 import { Shell } from "./shell/Shell";
 import { AuthGate } from "./shell/AuthGate";
 import { SurfaceRouter } from "./shell/SurfaceRouter";
-import { ExportProgressPortal } from "./components/portal/ExportProgressPortal";
-import { ModalPortal } from "./components/portal/ModalPortal";
-import { MoshToastPortal } from "./components/portal/mosh-toast/MoshToastPortal";
-import { StatusToastPortal } from "./components/portal/status-toast/StatusToastPortal";
-import { UndoToastPortal } from "./components/portal/undo-toast/UndoToastPortal";
-import { TemplatePreviewPortal } from "./components/portal/template-preview/TemplatePreviewPortal";
-import { WelcomePortal } from "./components/onboarding/welcome/WelcomePortal";
+import { DesktopPlatformModalHost } from "./shell/overlays/DesktopPlatformModalHost";
 import { useAppActions } from "./shell/use-app-actions";
 
-// TutorialPortal is intentionally omitted: its onboarding tooltips render into
-// document.body and would leak from mounted-but-hidden surfaces onto the active
-// one. The web's first-run welcome (WelcomePortal) is mounted: it is a single
-// full-window overlay started from the home dashboard, not per-surface tooltips.
-//
-// ModalPortal IS mounted: it hosts the feature modals (crop, selective effect,
-// mask area, colour studio, riso export, resize, confirm, prompt) that darkroom and studio
-// emit. It renders into document.body but shows one modal at a time keyed to the
-// active surface's emitted event, so there is no cross-surface leakage.
+// The web App mounts one overlay host per package (README "Overlays"); the
+// desktop mounts the same hosts once, above every tab. Web's PlatformModalHost is
+// replaced by DesktopPlatformModalHost (no checkout or sign-in modals). The
+// onboarding TutorialPortal stays out: its tooltips render into document.body
+// and would leak from hidden surfaces onto the active one. Per-editor portals
+// (popovers, context menus, command palette) are mounted by the editors.
 export default function App() {
   useAppActions();
   return (
     <Router>
       <AuthGate>
         <Shell>
-          <ExportProgressPortal />
-          <ModalPortal />
+          <DialogHost />
+          <DesktopPlatformModalHost />
+          <DarkroomModalHost />
+          <StudioModalHost />
           <MoshToastPortal />
           <StatusToastPortal />
           <UndoToastPortal />
-          <TemplatePreviewPortal />
-          <WelcomePortal />
+          <ExportProgressPortal />
+          <Suspense fallback={null}>
+            <RemovalProgressPortal />
+            <TemplatePreviewPortal />
+            <ElementLibraryPortal />
+            <WelcomePortal />
+            <AnnouncementPortal />
+          </Suspense>
           <SurfaceRouter />
         </Shell>
       </AuthGate>

@@ -1,4 +1,4 @@
-import { signal } from "../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 
 export interface BeatState {
   status: "idle" | "analyzing" | "ready" | "no-audio" | "error";
