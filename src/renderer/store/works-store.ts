@@ -1,11 +1,12 @@
 import { signal } from "../lib/signal";
 import { getAllWorks, persistWork, removeWork, getWork as getLocalWork } from "../utils/works-persist";
 import type { Work } from "../types/work";
-import { userSignal } from "../hooks/useAuth";
+import { isReturningUser, userSignal } from "../hooks/useAuth";
+import { waitForAuthSettled } from "../lib/api/wait-for-auth";
 import * as ProjectsAPI from "../lib/projects-api";
 import type { ServerProject, ServerProjectSummary } from "../lib/projects-api";
-import { resolveAssetUrl } from "../lib/api-client";
-import { saveToCloud } from "../lib/save-to-cloud";
+import { backendEnabled, resolveAssetUrl } from "../lib/api-client";
+import { syncToCloud, type CloudSyncOutcome } from "../lib/save-to-cloud";
 
 const DEFAULT_CANVAS_SIZE = 1;
 const DEFAULT_BACKGROUND = "#ffffff";
@@ -74,15 +75,14 @@ export async function loadWorks(): Promise<void> {
   worksLoadingSignal.value = false;
 }
 
-export async function saveWork(work: Work): Promise<void> {
-  const savedToCloud = await saveToCloud(workToCloud(work));
-  if (!savedToCloud) {
+export async function saveWork(work: Work): Promise<CloudSyncOutcome> {
+  const outcome = await syncToCloud(workToCloud(work));
+  if (outcome !== "saved") {
     await persistWork(work);
   }
 
-  const next = worksSignal.value.filter((w) => w.id !== work.id);
-  next.unshift(work);
-  worksSignal.value = next;
+  worksSignal.value = [work, ...worksSignal.value.filter((existing) => existing.id !== work.id)];
+  return outcome;
 }
 
 export async function duplicateWork(id: string, newName: string): Promise<string | null> {
@@ -100,13 +100,29 @@ export async function duplicateWork(id: string, newName: string): Promise<string
   return cloned.id;
 }
 
-export async function getWorkById(id: string): Promise<Work | null> {
-  const user = userSignal.value;
-  if (user) {
-    const cloud = await ProjectsAPI.getProject(id);
-    if (cloud) return cloudToWork(cloud);
-  }
-  return await getLocalWork(id);
+async function getWorkById(id: string): Promise<Work | null> {
+  const result = await loadWorkById(id);
+  return result.kind === "found" ? result.work : null;
+}
+
+export type WorkLoadResult =
+  | { kind: "found"; work: Work }
+  | { kind: "missing" }
+  | { kind: "failed" };
+
+const loadLocalWorkResult = async (id: string): Promise<WorkLoadResult> => {
+  const local = await getLocalWork(id);
+  return local ? { kind: "found", work: local } : { kind: "missing" };
+};
+
+export async function loadWorkById(id: string): Promise<WorkLoadResult> {
+  await waitForAuthSettled();
+  if (!userSignal.value && backendEnabled && isReturningUser()) return { kind: "failed" };
+  if (!userSignal.value) return await loadLocalWorkResult(id);
+  const cloud = await ProjectsAPI.fetchProject(id);
+  if (cloud.kind === "ok") return { kind: "found", work: cloudToWork(cloud.data) };
+  if (cloud.kind === "failed") return { kind: "failed" };
+  return await loadLocalWorkResult(id);
 }
 
 export async function deleteWork(id: string): Promise<void> {
@@ -116,4 +132,25 @@ export async function deleteWork(id: string): Promise<void> {
   }
   await removeWork(id);
   worksSignal.value = worksSignal.value.filter((w) => w.id !== id);
+}
+
+const renameLocalWork = async (id: string, name: string): Promise<boolean> => {
+  const local = await getLocalWork(id);
+  if (!local) return false;
+  await persistWork({ ...local, name, updatedAt: Date.now() });
+  return true;
+};
+
+const renameCloudWork = async (id: string, name: string): Promise<boolean> => {
+  const outcome = await ProjectsAPI.putProject(id, { name });
+  if (outcome.kind === "not_found") return await renameLocalWork(id, name);
+  return outcome.kind === "ok";
+};
+
+export async function renameWork(id: string, name: string): Promise<boolean> {
+  const renamed = userSignal.value ? await renameCloudWork(id, name) : await renameLocalWork(id, name);
+  if (renamed) {
+    worksSignal.value = worksSignal.value.map((work) => (work.id === id ? { ...work, name } : work));
+  }
+  return renamed;
 }

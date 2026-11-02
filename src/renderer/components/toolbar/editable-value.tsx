@@ -35,7 +35,7 @@ export const EditableValue: React.FC<EditableValueProps> = ({
   decimals = 0,
   scale = DEFAULT_SCALE,
   disabled,
-  className = "text-[9px]",
+  className = "text-[12px]",
 }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");

@@ -1,6 +1,8 @@
 import type { TextLayer } from "../../../../../data/studioTypes";
 import type { TextShadowSpec } from "../../../text-effects/text-shadow-specs";
 import type { PositionedRun } from "./text-layout";
+import { drawRunDecorations } from "./draw-decorations";
+import { setCanvasLetterSpacing } from "../../../rich-text/letter-spacing";
 
 export interface OffscreenBounds {
   originX: number;
@@ -43,8 +45,7 @@ export const measureOffscreenBounds = (
 export const prepareTextContext = (ctx: CanvasRenderingContext2D, layer: TextLayer, s: number): void => {
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
-  if ("letterSpacing" in ctx)
-    (ctx as unknown as { letterSpacing: string }).letterSpacing = `${layer.letterSpacing * s}px`;
+  setCanvasLetterSpacing(ctx, layer.letterSpacing * s);
 };
 
 const SHADOW_ONLY_FILL = "#000000";
@@ -63,7 +64,9 @@ export const drawShadowPasses = (
     ctx.shadowOffsetY = spec.y;
     for (const run of runs) {
       ctx.font = run.font;
+      setCanvasLetterSpacing(ctx, run.letterSpacing);
       ctx.fillText(run.text, run.x - shift, run.y);
+      drawRunDecorations(ctx, run, -shift);
     }
   }
   ctx.shadowColor = "transparent";
@@ -80,6 +83,8 @@ export const drawFillPass = (
   for (const run of runs) {
     ctx.font = run.font;
     ctx.fillStyle = run.color ?? fill;
+    setCanvasLetterSpacing(ctx, run.letterSpacing);
     ctx.fillText(run.text, run.x, run.y);
+    drawRunDecorations(ctx, run);
   }
 };

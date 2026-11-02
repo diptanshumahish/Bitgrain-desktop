@@ -5,7 +5,10 @@ export type RichStyleProp =
   | "fontFamily"
   | "fontWeight"
   | "fontStyle"
-  | "fontSize";
+  | "fontSize"
+  | "textDecorationLine"
+  | "textTransform"
+  | "letterSpacing";
 
 export interface StyleField<T> {
   value: T | null;
@@ -18,15 +21,13 @@ export interface RunStyle {
   fontWeight: string;
   fontStyle: string;
   fontSize: number;
+  underline: boolean;
+  strike: boolean;
+  textTransform: string;
+  letterSpacing: number;
 }
 
-export interface BaseTextStyle {
-  color: string;
-  fontFamily: string;
-  fontWeight: string;
-  fontStyle: string;
-  fontSize: number;
-}
+export type BaseTextStyle = RunStyle;
 
 export interface ResolvedTextStyle {
   color: StyleField<string>;
@@ -34,6 +35,10 @@ export interface ResolvedTextStyle {
   fontWeight: StyleField<string>;
   fontSize: StyleField<number>;
   italic: StyleField<boolean>;
+  underline: StyleField<boolean>;
+  strike: StyleField<boolean>;
+  textTransform: StyleField<string>;
+  letterSpacing: StyleField<number>;
   collapsed: boolean;
 }
 

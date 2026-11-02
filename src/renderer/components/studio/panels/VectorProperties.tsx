@@ -1,14 +1,15 @@
 import React from "react";
 import { Circle, Blend } from "lucide-react";
 import type { VectorLayer, BlendMode } from "../../../data/studioTypes";
-import { ColorPicker } from "../ui/ColorPicker";
-import { ScrubField, BtnGroup } from "../ui/panelPrimitives";
+import { ScrubField } from "../ui/panelPrimitives";
 import { BLEND_MODE_OPTIONS } from "../ui/blend-modes";
 import { Dropdown } from "../ui/dropdown";
 import { PanelGroup } from "../ui/panel-group";
 import { AlignRow } from "../ui/align-row";
 import { PositionSizeFields } from "../ui/position-size-fields";
 import { VectorFillSection } from "./VectorFillSection";
+import { VectorStrokeSection } from "./vector/VectorStrokeSection";
+import { VectorSpecimenCard } from "./vector/VectorSpecimenCard";
 
 interface VectorPropertiesProps {
   layer: VectorLayer;
@@ -16,34 +17,6 @@ interface VectorPropertiesProps {
   onChange: (updates: Partial<VectorLayer>) => void;
   onAlign?: (alignment: string) => void;
 }
-
-const LINE_CAP_OPTIONS = [
-  { label: "Round", value: "round" },
-  { label: "Square", value: "square" },
-  { label: "Butt", value: "butt" },
-];
-
-const LINE_JOIN_OPTIONS = [
-  { label: "Round", value: "round" },
-  { label: "Miter", value: "miter" },
-  { label: "Bevel", value: "bevel" },
-];
-
-const LINE_STYLE_OPTIONS = [
-  { label: "Solid", value: "solid" },
-  { label: "Dashed", value: "dashed" },
-  { label: "Dotted", value: "dotted" },
-];
-
-const LabeledControl: React.FC<{ label: string; children: React.ReactNode }> = ({
-  label,
-  children,
-}) => (
-  <div className="flex flex-col gap-1.5">
-    <span className="text-[11px] text-[var(--s-text-subtle)] font-medium">{label}</span>
-    {children}
-  </div>
-);
 
 export const VectorProperties: React.FC<VectorPropertiesProps> = ({
   layer,
@@ -55,6 +28,7 @@ export const VectorProperties: React.FC<VectorPropertiesProps> = ({
 
   return (
     <div className="flex flex-col font-editorial">
+      <VectorSpecimenCard layer={layer} />
       <PanelGroup title="Position & Size">
         {onAlign && <AlignRow onAlign={onAlign} />}
         <PositionSizeFields
@@ -71,62 +45,10 @@ export const VectorProperties: React.FC<VectorPropertiesProps> = ({
       </PanelGroup>
 
       {isClosed && (
-        <PanelGroup title="Fill">
-          <VectorFillSection layer={layer} pageImage={pageImage ?? null} onChange={onChange} />
-        </PanelGroup>
+        <VectorFillSection layer={layer} pageImage={pageImage ?? null} onChange={onChange} />
       )}
 
-      <PanelGroup title="Stroke">
-        <LabeledControl label="Color">
-          <ColorPicker
-            color={layer.strokeColor}
-            varId={layer.strokeColorVar}
-            onChange={(c) => onChange({ strokeColor: c, strokeColorVar: undefined })}
-            onBindVariable={(id, value) => onChange({ strokeColor: value, strokeColorVar: id })}
-          />
-        </LabeledControl>
-
-        <ScrubField
-          label="Width"
-          value={layer.strokeWidth}
-          min={0}
-          max={200}
-          onChange={(v) => onChange({ strokeWidth: v })}
-        />
-
-        <LabeledControl label="Style">
-          <BtnGroup
-            options={LINE_STYLE_OPTIONS}
-            value={layer.dashStyle}
-            onChange={(v) => onChange({ dashStyle: v as VectorLayer["dashStyle"] })}
-          />
-        </LabeledControl>
-
-        <LabeledControl label="Cap">
-          <BtnGroup
-            options={LINE_CAP_OPTIONS}
-            value={layer.lineCap}
-            onChange={(v) => onChange({ lineCap: v as VectorLayer["lineCap"] })}
-          />
-        </LabeledControl>
-
-        <LabeledControl label="Join">
-          <BtnGroup
-            options={LINE_JOIN_OPTIONS}
-            value={layer.lineJoin}
-            onChange={(v) => onChange({ lineJoin: v as VectorLayer["lineJoin"] })}
-          />
-        </LabeledControl>
-
-        <ScrubField
-          label="Draw-on"
-          value={Math.round(layer.drawProgress ?? 100)}
-          min={0}
-          max={100}
-          suffix="%"
-          onChange={(v) => onChange({ drawProgress: v })}
-        />
-      </PanelGroup>
+      <VectorStrokeSection layer={layer} onChange={onChange} />
 
       <PanelGroup title="Appearance">
         <div className="grid grid-cols-2 gap-2">

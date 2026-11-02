@@ -1,10 +1,12 @@
 import React from "react";
 import type { AdjustmentLayer } from "../../../data/studioTypes";
-import { Section } from "../ui/panelPrimitives";
+import { PanelGroup } from "../ui/panel-group";
 import { PositionSizeFields } from "../ui/position-size-fields";
 import { AlignRow } from "../ui/align-row";
 import { AppearanceControls } from "./appearance-controls";
+import { AdjustSection } from "./image/AdjustSection";
 import { BitgrainEffectControls } from "./BitgrainEffectControls";
+import { GradeControls } from "../../../modules/grading/ui/GradeControls";
 
 interface AdjustmentPropertiesProps {
   layer: AdjustmentLayer;
@@ -18,11 +20,11 @@ export const AdjustmentProperties: React.FC<AdjustmentPropertiesProps> = ({
   onAlign,
 }) => (
   <div className="flex flex-col font-editorial">
-    <div className="px-3.5 pt-4 pb-1 text-[11px] text-[var(--s-text-muted)] leading-snug">
-      Applies its effect to everything below it, within this box.
+    <div className="px-4 pt-4 text-[11px] text-[var(--s-text-muted)] leading-snug">
+      Applies its effect and color grade to everything below it, within this box.
     </div>
 
-    <Section title="Position & Size">
+    <PanelGroup title="Position & Size">
       {onAlign && <AlignRow onAlign={onAlign} />}
       <PositionSizeFields
         values={{
@@ -36,24 +38,28 @@ export const AdjustmentProperties: React.FC<AdjustmentPropertiesProps> = ({
         onChange={(updates) => onChange(updates as Partial<AdjustmentLayer>)}
         showRadius={false}
       />
-    </Section>
+    </PanelGroup>
 
-    <Section title="Appearance">
+    <PanelGroup title="Appearance">
       <AppearanceControls
         opacity={layer.opacity}
         blendMode={layer.blendMode}
-        filters={layer.filters}
         onOpacityChange={(opacity) => onChange({ opacity })}
         onBlendModeChange={(blendMode) => onChange({ blendMode })}
-        onFiltersChange={(filters) => onChange({ filters })}
       />
-    </Section>
+    </PanelGroup>
 
-    <Section title="Effect">
+    <AdjustSection filters={layer.filters} onChange={(filters) => onChange({ filters })} defaultOpen />
+
+    <PanelGroup title="Effect">
       <BitgrainEffectControls
         effect={layer.bitgrainEffect}
         onChange={(effect) => onChange({ bitgrainEffect: effect })}
       />
-    </Section>
+    </PanelGroup>
+
+    <PanelGroup title="Color grade">
+      <GradeControls grade={layer.colorGrade} onChange={(colorGrade) => onChange({ colorGrade })} />
+    </PanelGroup>
   </div>
 );

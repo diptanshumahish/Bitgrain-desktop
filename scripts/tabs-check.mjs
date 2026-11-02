@@ -116,7 +116,7 @@ async function run() {
   // a sample when it is genuinely empty, so the test is robust to either state.
   let afterSample = start;
   if (start.emptyState) {
-    const loadedSample = await clickByText(window, "button", "try a sample");
+    const loadedSample = await clickAttr(window, 'button[aria-label^="Try the sample photo"]');
     if (!loadedSample) failures.push("empty tab but no try-a-sample button");
     await wait(2500);
     afterSample = await probe(window);

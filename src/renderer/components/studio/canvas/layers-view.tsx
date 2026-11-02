@@ -111,6 +111,7 @@ export const LayersView = ({
               layer={layer as ImageLayer}
               image={image}
               selected={selectedIds.includes(layer.id)}
+              onCropChange={(crop) => onUpdateLayer(layer.id, { crop })}
               {...commonProps}
             />
           );
@@ -154,6 +155,7 @@ export const LayersView = ({
               key={layer.id}
               layer={layer as UploadLayer}
               selected={selectedIds.includes(layer.id)}
+              onCropChange={(crop) => onUpdateLayer(layer.id, { crop })}
               {...commonProps}
             />
           );

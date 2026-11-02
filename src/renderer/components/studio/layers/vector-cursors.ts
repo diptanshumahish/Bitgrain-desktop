@@ -1,16 +1,29 @@
-const PEN_BODY =
-  "%3Cpath d='M12 19l7-7 3 3-7 7-3-3z'/%3E" +
-  "%3Cpath d='M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E" +
-  "%3Cpath d='M2 2l7.586 7.586'/%3E" +
-  "%3Ccircle cx='11' cy='11' r='2'/%3E";
+const CURSOR_SIZE = 24;
+const HOTSPOT = 2;
 
-const SVG_OPEN =
-  "%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='white' stroke='black' stroke-width='1.5' stroke-linejoin='round'%3E";
+const NIB =
+  "<path d='M2 2 L12.9 6.6 L15.8 9.4 L9.4 15.8 L6.6 12.9 Z' fill='white' stroke='black' stroke-width='1.3' stroke-linejoin='round'/>" +
+  "<path d='M2 2 L7.4 7.4' stroke='black' stroke-width='1.1' stroke-linecap='round'/>" +
+  "<circle cx='8.4' cy='8.4' r='1.3' fill='black'/>" +
+  "<path d='M15.4 10.6 L19.9 15.1 L15.1 19.9 L10.6 15.4 Z' fill='black' stroke='white' stroke-width='1' stroke-linejoin='round'/>";
 
-// Pen with a hollow nib — used when creating a new point on a segment.
-export const PEN_CURSOR =
-  `url("data:image/svg+xml,${SVG_OPEN}${PEN_BODY}%3C/svg%3E") 2 2, crosshair`;
+const ADD_BADGE =
+  "<circle cx='19' cy='5' r='4.2' fill='white' stroke='black' stroke-width='1'/>" +
+  "<path d='M19 3 V7 M17 5 H21' stroke='black' stroke-width='1.2' stroke-linecap='round'/>";
 
-// Pen with a filled accent node at the nib — used when dragging an existing point.
-export const DRAG_NODE_CURSOR =
-  `url("data:image/svg+xml,${SVG_OPEN}${PEN_BODY}%3Crect x='0' y='0' width='5.5' height='5.5' rx='1.5' fill='%23820000' stroke='white' stroke-width='1'/%3E%3C/svg%3E") 2 2, grab`;
+const CLOSE_BADGE = "<circle cx='19' cy='5' r='3.4' fill='white' stroke='%233b82f6' stroke-width='1.8'/>";
+
+const NODE_BADGE = "<rect x='15.5' y='1.5' width='7' height='7' rx='1' fill='%233b82f6' stroke='white' stroke-width='1'/>";
+
+const buildCursor = (content: string, fallback: string): string => {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${CURSOR_SIZE}' height='${CURSOR_SIZE}' viewBox='0 0 24 24'>${content}</svg>`;
+  return `url("data:image/svg+xml,${svg.replace(/</g, "%3C").replace(/>/g, "%3E")}") ${HOTSPOT} ${HOTSPOT}, ${fallback}`;
+};
+
+export const PEN_CURSOR = buildCursor(NIB, "crosshair");
+
+export const PEN_ADD_CURSOR = buildCursor(NIB + ADD_BADGE, "crosshair");
+
+export const PEN_CLOSE_CURSOR = buildCursor(NIB + CLOSE_BADGE, "crosshair");
+
+export const DRAG_NODE_CURSOR = buildCursor(NIB + NODE_BADGE, "grab");

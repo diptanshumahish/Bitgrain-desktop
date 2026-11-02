@@ -1,6 +1,7 @@
 import { processImageFile, probeImageDimensions } from "../../utils/image-utils";
 import { uploadTemplateAsset } from "../../lib/template-assets";
 import { emitInsertImage } from "../../studio-plugins/host";
+import { trackEvent } from "../../lib/tracker";
 
 const IMAGE_EXTENSION_PATTERN = /\.(png|jpe?g|webp|gif|avif|svg|bmp|heic|heif)$/i;
 const DRAG_IMAGE_TYPES = ["Files", "text/uri-list", "text/html"];
@@ -59,11 +60,14 @@ export const dataTransferMayHaveImage = (dataTransfer: DataTransfer): boolean =>
 export const ingestDataTransferImages = (dataTransfer: DataTransfer): void => {
   const files = Array.from(dataTransfer.files).filter(isImageFile);
   if (files.length > 0) {
+    trackEvent("studio", "image_dropped", { details: { count: files.length, kind: "file" } });
     files.forEach((file) => void addImageFile(file));
     return;
   }
   const url = extractImageUrl(dataTransfer);
-  if (url) void addImageFromUrl(url);
+  if (!url) return;
+  trackEvent("studio", "image_dropped", { details: { count: 1, kind: "url" } });
+  void addImageFromUrl(url);
 };
 
 export const clipboardHasImage = (clipboardData: DataTransfer): boolean => {
@@ -76,6 +80,7 @@ export const clipboardHasImage = (clipboardData: DataTransfer): boolean => {
 export const ingestClipboardImages = (clipboardData: DataTransfer): void => {
   const fromFiles = Array.from(clipboardData.files).filter(isImageFile);
   if (fromFiles.length > 0) {
+    trackEvent("studio", "image_pasted", { details: { count: fromFiles.length } });
     fromFiles.forEach((file) => void addImageFile(file));
     return;
   }
@@ -83,5 +88,6 @@ export const ingestClipboardImages = (clipboardData: DataTransfer): void => {
     .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
     .map((item) => item.getAsFile())
     .filter((file): file is File => file !== null);
+  if (fromItems.length > 0) trackEvent("studio", "image_pasted", { details: { count: fromItems.length } });
   fromItems.forEach((file) => void addImageFile(file));
 };

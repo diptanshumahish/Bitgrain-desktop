@@ -1,35 +1,16 @@
-import heic2any from "heic2any";
+import { convertHeicToJpeg, isHeicFile } from "../pages/home-page/upload/convert/convert-heic";
 
-const HEIC_QUALITY = 0.8;
-
-export const processImageFile = async (file: File): Promise<string> => {
-  let blob: Blob = file;
-
-  const isHeic =
-    file.name.toLowerCase().endsWith(".heic") ||
-    file.name.toLowerCase().endsWith(".heif") ||
-    file.type === "image/heic" ||
-    file.type === "image/heif";
-
-  if (isHeic) {
-    try {
-      const converted = await heic2any({
-        blob: file,
-        toType: "image/jpeg",
-        quality: HEIC_QUALITY,
-      });
-      blob = Array.isArray(converted) ? converted[0] : converted;
-    } catch (err) {
-      console.error("HEIC conversion failed:", err);
-    }
-  }
-
-  return new Promise((resolve, reject) => {
+const readAsDataUrl = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (err) => reject(err);
+    reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
   });
+
+export const processImageFile = async (file: File): Promise<string> => {
+  const blob = isHeicFile(file) ? await convertHeicToJpeg(file) : file;
+  return readAsDataUrl(blob);
 };
 
 export interface ImageDimensions {

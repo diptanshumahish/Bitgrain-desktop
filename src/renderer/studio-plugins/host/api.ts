@@ -22,9 +22,8 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T | null>
   }
 }
 
-export async function fetchPlugins(signal?: AbortSignal): Promise<Plugin[]> {
-  const list = await getJson<Plugin[]>("/api/plugins", signal);
-  return list ?? [];
+export async function fetchPlugins(signal?: AbortSignal): Promise<Plugin[] | null> {
+  return await getJson<Plugin[]>("/api/plugins", signal);
 }
 
 export interface SearchQuery {

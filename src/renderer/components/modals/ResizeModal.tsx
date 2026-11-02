@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { X, Check } from "lucide-react";
+import { X, Check, BookOpen, Disc3 } from "lucide-react";
 import { useSignalValue } from "../../lib/signal";
 import { themeSignal } from "../../store/global-theme-store";
-import { RESIZE_FORMATS } from "../../utils/studio-resize";
+import { RELEASE_KIT_FORMAT_IDS, RESIZE_FORMATS } from "../../utils/studio-resize";
 
 interface ResizeModalProps {
   sourceWidth: number;
@@ -26,6 +26,10 @@ export const ResizeModal: React.FC<ResizeModalProps> = ({ sourceWidth, sourceHei
     });
   };
 
+  const selectReleaseKit = (): void => {
+    setSelected(new Set(RELEASE_KIT_FORMAT_IDS));
+  };
+
   const apply = (): void => {
     if (selected.size === 0) return;
     onApply([...selected]);
@@ -45,8 +49,33 @@ export const ResizeModal: React.FC<ResizeModalProps> = ({ sourceWidth, sourceHei
               pick sizes, we lay your design out in each. predictable, no AI.
             </p>
           </div>
-          <button onClick={onClose} className={`w-8 h-8 flex items-center justify-center rounded-lg ${dark ? "text-zinc-500 hover:bg-zinc-800" : "text-zinc-400 hover:bg-zinc-100"}`}>
-            <X size={16} strokeWidth={2} />
+          <div className="flex items-center gap-2">
+            <a
+              href="/docs/04-studio/02-pages-and-frames"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center gap-1.5 px-2 h-7 rounded-md text-[11px] font-medium no-underline transition-colors ${dark ? "text-zinc-500 hover:bg-zinc-800 hover:text-white" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"}`}
+            >
+              <BookOpen size={12} /> Guide
+            </a>
+            <button onClick={onClose} className={`w-8 h-8 flex items-center justify-center rounded-lg ${dark ? "text-zinc-500 hover:bg-zinc-800" : "text-zinc-400 hover:bg-zinc-100"}`}>
+              <X size={16} strokeWidth={2} />
+            </button>
+          </div>
+        </div>
+
+        <div className="px-5 pt-5">
+          <button
+            onClick={selectReleaseKit}
+            className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${dark ? "border-white/10 hover:border-white/20" : "border-zinc-200 hover:border-zinc-300"}`}
+          >
+            <Disc3 size={18} strokeWidth={1.75} className="text-violet-500 shrink-0" />
+            <span className="flex-1 min-w-0">
+              <span className={`block text-[12px] leading-tight ${dark ? "text-zinc-200" : "text-zinc-800"}`}>release kit</span>
+              <span className={`block text-[10px] ${dark ? "text-zinc-500" : "text-zinc-400"}`}>
+                spotify, apple and amazon covers, canvas, story and a tour poster in one go
+              </span>
+            </span>
           </button>
         </div>
 

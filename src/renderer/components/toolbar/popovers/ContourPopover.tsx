@@ -16,7 +16,7 @@ interface ContourPopoverProps {
 }
 
 const optionClass = (active: boolean): string =>
-  `px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+  `px-2 py-1.5 rounded-lg text-[12px] font-medium transition-all ${
     active
       ? "bg-[var(--s-accent)] text-[var(--s-accent-text)]"
       : "text-[var(--s-text-muted)] hover:bg-[var(--s-bg-input-hover)] hover:text-[var(--s-text)]"
@@ -37,6 +37,7 @@ export const ContourPopover: React.FC<ContourPopoverProps> = ({
     <PopoverSection title="Levels">
       <div className="grid grid-cols-[1fr_28px] items-center gap-x-2 px-1">
         <Slider
+          label="Levels"
           min={2}
           max={20}
           step={1}

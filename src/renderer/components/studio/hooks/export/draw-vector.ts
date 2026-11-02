@@ -1,5 +1,6 @@
 import type { VectorLayer, VectorFillFit, BezierAnchor } from "../../../../data/studioTypes";
 import { vectorPathToD, dashArrayFor } from "../../../../utils/vector-utils";
+import { scaleVectorPath } from "../../../../utils/scale-vector-path";
 import { loadImage } from "./image-helpers";
 
 const VIEWBOX_SIZE = 100;
@@ -34,13 +35,14 @@ const computeViewBox = (layer: VectorLayer): ViewBox => {
     extend(anchor.inHandle);
     extend(anchor.outHandle);
   }
-  const padX = (layer.strokeWidth / 2) * (VIEWBOX_SIZE / layer.width);
-  const padY = (layer.strokeWidth / 2) * (VIEWBOX_SIZE / layer.height);
+  const scaleX = layer.width / VIEWBOX_SIZE;
+  const scaleY = layer.height / VIEWBOX_SIZE;
+  const pad = layer.strokeWidth / 2;
   return {
-    minX: minX - padX,
-    minY: minY - padY,
-    width: maxX - minX + padX * 2,
-    height: maxY - minY + padY * 2,
+    minX: minX * scaleX - pad,
+    minY: minY * scaleY - pad,
+    width: (maxX - minX) * scaleX + pad * 2,
+    height: (maxY - minY) * scaleY + pad * 2,
   };
 };
 
@@ -48,14 +50,13 @@ const buildVectorSvg = (layer: VectorLayer, viewBox: ViewBox): string => {
   const patternId = `vfill-${layer.id}`;
   const pathFill = !layer.path.closed ? "none" : layer.fillImage ? `url(#${patternId})` : layer.fill;
   const defs = layer.fillImage
-    ? `<defs><pattern id="${patternId}" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse"><image href="${layer.fillImage.src}" x="0" y="0" width="100" height="100" preserveAspectRatio="${fitToAspectRatio(layer.fillImage.fit)}"/></pattern></defs>`
+    ? `<defs><pattern id="${patternId}" x="0" y="0" width="${layer.width}" height="${layer.height}" patternUnits="userSpaceOnUse"><image href="${layer.fillImage.src}" x="0" y="0" width="${layer.width}" height="${layer.height}" preserveAspectRatio="${fitToAspectRatio(layer.fillImage.fit)}"/></pattern></defs>`
     : "";
   const dashArray = dashArrayFor(layer.dashStyle, layer.strokeWidth);
   const dashAttr = dashArray ? ` stroke-dasharray="${dashArray}"` : "";
-  const path = `<path d="${vectorPathToD(layer.path)}" fill="${pathFill}" stroke="${layer.strokeColor}" stroke-width="${layer.strokeWidth}" stroke-linecap="${layer.lineCap}" stroke-linejoin="${layer.lineJoin}"${dashAttr} vector-effect="non-scaling-stroke"/>`;
-  const svgWidth = layer.width * (viewBox.width / VIEWBOX_SIZE);
-  const svgHeight = layer.height * (viewBox.height / VIEWBOX_SIZE);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}" preserveAspectRatio="none" width="${svgWidth}" height="${svgHeight}">${defs}${path}</svg>`;
+  const pixelPath = scaleVectorPath(layer.path, layer.width / VIEWBOX_SIZE, layer.height / VIEWBOX_SIZE);
+  const path = `<path d="${vectorPathToD(pixelPath)}" fill="${pathFill}" stroke="${layer.strokeColor}" stroke-width="${layer.strokeWidth}" stroke-linecap="${layer.lineCap}" stroke-linejoin="${layer.lineJoin}"${dashAttr}/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}" width="${viewBox.width}" height="${viewBox.height}">${defs}${path}</svg>`;
 };
 
 export const drawVectorLayer = async (
@@ -78,13 +79,7 @@ export const drawVectorLayer = async (
       ctx.scale(layer.flipH ? -1 : 1, layer.flipV ? -1 : 1);
       ctx.translate(-cx, -cy);
     }
-    const scaleX = layer.width / VIEWBOX_SIZE;
-    const scaleY = layer.height / VIEWBOX_SIZE;
-    const drawX = layer.x + viewBox.minX * scaleX;
-    const drawY = layer.y + viewBox.minY * scaleY;
-    const drawWidth = viewBox.width * scaleX;
-    const drawHeight = viewBox.height * scaleY;
-    ctx.drawImage(img, drawX * s, drawY * s, drawWidth * s, drawHeight * s);
+    ctx.drawImage(img, (layer.x + viewBox.minX) * s, (layer.y + viewBox.minY) * s, viewBox.width * s, viewBox.height * s);
     ctx.restore();
   } catch {
     /* skip */

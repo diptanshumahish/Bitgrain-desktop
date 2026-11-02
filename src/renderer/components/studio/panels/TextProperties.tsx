@@ -1,24 +1,25 @@
 import React from "react";
-import { AlignLeft, AlignCenter, AlignRight, Monitor } from "lucide-react";
-import type { TextLayer, CustomFontEntry, BlendMode } from "../../../data/studioTypes";
+import type { TextLayer, CustomFontEntry, BlendMode, TextDecorationLine } from "../../../data/studioTypes";
 import { DEFAULT_GRADIENT_TEXT, FONT_FAMILIES } from "../../../data/studioTypes";
 import {
   ScrubField,
   BlendModeSelector,
-  Row,
-  BtnGroup,
   Toggle,
   OpacityRow,
 } from "../ui/panelPrimitives";
 import { PanelGroup } from "../ui/panel-group";
 import { AlignRow } from "../ui/align-row";
-import { LineHeightIcon, LetterSpacingIcon } from "./text/text-icons";
-import { PairingsPanel } from "./text/PairingsPanel";
 import { GradientConfig } from "./text/GradientConfig";
 import { EffectsSection } from "./text/EffectsSection";
 import { FillSection } from "./text/FillSection";
 import { TypographySection } from "./text/TypographySection";
-import { FontUploadButton } from "../fonts/FontUploadButton";
+import { TextToolbar, type TextFormatKey } from "./text/TextToolbar";
+import { TextCaseRow } from "./text/TextCaseRow";
+import { TextSpecimenCard } from "./text/TextSpecimenCard";
+import { isBoldWeight, nextBoldWeight } from "../rich-text/bold-weight";
+import { parseDecoration, toggleDecoration } from "../rich-text/text-decoration";
+import { FontSourceActions } from "./text/FontSourceActions";
+import { previewTextLayer, type TextPreviewPatch } from "../fonts/text-preview-signal";
 import { adminFontOptionsSignal, availableWeightsForFamily, availableStylesForFamily } from "../../../lib/admin-fonts";
 import {
   systemFontOptionsSignal,
@@ -32,6 +33,8 @@ import {
   applyToSelection,
   recolorSelectionSubset,
   setSelectionColor,
+  previewOnSelection,
+  endSelectionPreview,
 } from "../rich-text/text-edit-bus";
 import { resolveHtmlStyle, layerBaseStyle } from "../rich-text/rich-text-read";
 import { stripPropFromHtml, recolorHtmlSubset } from "../rich-text/rich-text-apply";
@@ -55,6 +58,9 @@ const charToLayer = (prop: RichStyleProp, value: string): Partial<TextLayer> => 
     case "fontWeight": return { fontWeight: value as TextLayer["fontWeight"] };
     case "fontSize": return { fontSize: Number(value) };
     case "fontStyle": return { fontStyle: value === "italic" ? "italic" : "regular" };
+    case "textDecorationLine": return { textDecoration: value as TextDecorationLine };
+    case "textTransform": return { textTransform: value as TextLayer["textTransform"] };
+    case "letterSpacing": return { letterSpacing: Number(value) };
   }
 };
 
@@ -91,12 +97,33 @@ export const TextProperties: React.FC<TextPropertiesProps> = ({
   const familyField = resolved?.fontFamily ?? field(layer.fontFamily);
   const weightField = resolved?.fontWeight ?? field(layer.fontWeight);
   const sizeField = resolved?.fontSize ?? field(layer.fontSize);
+  const transformField = resolved?.textTransform ?? field<string>(layer.textTransform);
+  const spacingField = resolved?.letterSpacing ?? field(layer.letterSpacing);
   const italicField = resolved?.italic ?? field(layer.fontStyle === "italic");
   const isStack = colorField.value === null && colorField.distinct.length > 1;
+  const layerDecoration = parseDecoration(layer.textDecoration);
+  const formatState = {
+    bold: isBoldWeight(weightField.value),
+    italic: italicField.value === true,
+    underline: (resolved?.underline ?? field(layerDecoration.underline)).value === true,
+    strike: (resolved?.strike ?? field(layerDecoration.strike)).value === true,
+  };
+
+  const toggleFormat = (key: TextFormatKey) => {
+    if (key === "bold") applyChar("fontWeight", nextBoldWeight(weightField.value));
+    else if (key === "italic") applyChar("fontStyle", formatState.italic ? "normal" : "italic");
+    else applyChar("textDecorationLine", toggleDecoration(formatState, key));
+  };
+
+  const toSelectionValue = (prop: RichStyleProp, value: string): string => {
+    if (prop === "fontSize") return `${Number(value) / base.fontSize}em`;
+    if (prop === "letterSpacing") return `${Number(value) / (sizeField.value ?? base.fontSize)}em`;
+    return value;
+  };
 
   const applyChar = (prop: RichStyleProp, value: string) => {
     if (editing) {
-      applyToSelection(prop, prop === "fontSize" ? `${Number(value) / base.fontSize}em` : value);
+      applyToSelection(prop, toSelectionValue(prop, value));
       return;
     }
     const update = charToLayer(prop, value);
@@ -144,6 +171,21 @@ export const TextProperties: React.FC<TextPropertiesProps> = ({
     }
   };
 
+  const previewPatch = (patch: TextPreviewPatch | null) => {
+    if (!editing) {
+      previewTextLayer(layer.id, patch);
+      return;
+    }
+    if (patch?.fontFamily) previewOnSelection("fontFamily", patch.fontFamily);
+    else if (patch?.fontWeight) previewOnSelection("fontWeight", patch.fontWeight);
+    else endSelectionPreview();
+  };
+
+  const handleFontUploaded = (font: CustomFontEntry) => {
+    onFontUpload?.(font);
+    applyChar("fontFamily", font.value);
+  };
+
   const adminFonts = useSignalValue(adminFontOptionsSignal);
 
   const fontOptions = [...customFonts, ...adminFonts, ...systemFonts, ...FONT_FAMILIES].map((font) => ({
@@ -154,10 +196,17 @@ export const TextProperties: React.FC<TextPropertiesProps> = ({
   }));
 
   const weightOptions = availableWeightsForFamily(familyField.value) ?? undefined;
-  const availableStyles = availableStylesForFamily(familyField.value) ?? undefined;
+  const availableStyles = availableStylesForFamily(familyField.value);
+  const showItalic = !availableStyles || (availableStyles.normal && availableStyles.italic);
 
   return (
     <div className="font-editorial">
+      <TextSpecimenCard
+        fontFamily={familyField.value ?? layer.fontFamily}
+        mixedFonts={familyField.value === null}
+        content={layer.content}
+      />
+
       <PanelGroup title="Position & Size">
         {onAlign && <AlignRow onAlign={onAlign} />}
         <div className="grid grid-cols-2 gap-2">
@@ -175,67 +224,39 @@ export const TextProperties: React.FC<TextPropertiesProps> = ({
         </div>
       </PanelGroup>
 
-      <PanelGroup title="Typography">
+      <PanelGroup
+        title="Typography"
+        actions={
+          <FontSourceActions
+            showSystemFonts={systemFonts.length === 0}
+            loadingSystemFonts={loadingSystemFonts}
+            onLoadSystemFonts={handleLoadSystemFonts}
+            onFontUploaded={onFontUpload ? handleFontUploaded : undefined}
+          />
+        }
+      >
         <TypographySection
           fontOptions={fontOptions}
           weightOptions={weightOptions}
-          availableStyles={availableStyles}
           familyField={familyField}
           weightField={weightField}
           sizeField={sizeField}
-          italicField={italicField}
+          spacingField={spacingField}
+          lineHeight={layer.lineHeight}
           onApply={applyChar}
+          onPreview={previewPatch}
+          onLineHeight={(lineHeight) => onChange({ lineHeight })}
         />
 
-        {systemFonts.length === 0 && (
-          <button
-            type="button"
-            onClick={handleLoadSystemFonts}
-            className="flex items-center gap-1.5 text-[10px] text-[var(--s-text-subtle)] hover:text-[var(--s-accent)] transition-colors bg-transparent border-none cursor-pointer w-fit"
-          >
-            <Monitor size={11} strokeWidth={1.5} className={loadingSystemFonts ? "animate-pulse" : ""} />
-            {loadingSystemFonts ? "Loading system fonts..." : "Use system fonts"}
-          </button>
-        )}
-
-        {onFontUpload && (
-          <FontUploadButton
-            onUploaded={(font) => {
-              onFontUpload(font);
-              applyChar("fontFamily", font.value);
-            }}
-          />
-        )}
-
-        <Row>
-          <ScrubField label={<LineHeightIcon />} value={layer.lineHeight} min={0.5} max={4} step={0.05} decimals={2} onChange={(v) => onChange({ lineHeight: v })} />
-          <ScrubField label={<LetterSpacingIcon />} value={layer.letterSpacing} min={-20} max={100} step={0.5} decimals={1} onChange={(v) => onChange({ letterSpacing: v })} />
-        </Row>
-        <Row>
-          <BtnGroup
-            options={[
-              { icon: <AlignLeft size={12} />, value: "left", title: "Align left" },
-              { icon: <AlignCenter size={12} />, value: "center", title: "Center" },
-              { icon: <AlignRight size={12} />, value: "right", title: "Align right" },
-            ]}
-            value={layer.align}
-            onChange={(v) => onChange({ align: v as TextLayer["align"] })}
-          />
-          <BtnGroup
-            options={[
-              { icon: <span className="text-[9.5px] font-bold">Aa</span>, value: "none", title: "None" },
-              { icon: <span className="text-[9.5px] font-bold">AA</span>, value: "uppercase", title: "Uppercase" },
-              { icon: <span className="text-[9.5px] font-bold">aa</span>, value: "lowercase", title: "Lowercase" },
-            ]}
-            value={layer.textTransform}
-            onChange={(v) => onChange({ textTransform: v as TextLayer["textTransform"] })}
-          />
-        </Row>
-
-        <PairingsPanel
-          current={familyField.value ?? layer.fontFamily}
-          onApply={(v) => applyChar("fontFamily", v)}
+        <TextToolbar
+          format={formatState}
+          showItalic={showItalic}
+          align={layer.align}
+          onToggleFormat={toggleFormat}
+          onAlign={(align) => onChange({ align })}
         />
+
+        <TextCaseRow value={transformField.value ?? ""} onChange={(textTransform) => applyChar("textTransform", textTransform)} />
       </PanelGroup>
 
       <PanelGroup title="Fill">

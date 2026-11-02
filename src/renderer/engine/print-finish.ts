@@ -38,14 +38,23 @@ const paperFromHex = (hex?: string): [number, number, number] => {
   return [(value >> 16) & BYTE_MAX, (value >> 8) & BYTE_MAX, value & BYTE_MAX];
 };
 
+const toGrey = (rgb: [number, number, number]): [number, number, number] => {
+  const luma = Math.round(rgb[0] * LUMA_R + rgb[1] * LUMA_G + rgb[2] * LUMA_B);
+  return [luma, luma, luma];
+};
+
 export const buildPrintFinishOptions = (
   strength: number,
   bgColor?: string,
-): PrintFinishOptions => ({
-  strength: clamp(strength, 0, 1),
-  paper: paperFromHex(bgColor),
-  ink: NEWSPRINT_INK,
-});
+  neutral = false,
+): PrintFinishOptions => {
+  const paper = paperFromHex(bgColor);
+  return {
+    strength: clamp(strength, 0, 1),
+    paper: neutral ? toGrey(paper) : paper,
+    ink: neutral ? toGrey(NEWSPRINT_INK) : NEWSPRINT_INK,
+  };
+};
 
 const buildMottleField = (
   width: number,

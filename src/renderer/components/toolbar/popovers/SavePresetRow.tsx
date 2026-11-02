@@ -19,7 +19,7 @@ export const SavePresetRow: React.FC<SavePresetRowProps> = ({ onSave, onCancel }
           if (e.key === "Escape") onCancel();
         }}
         placeholder="Preset name…"
-        className="flex-1 text-[11px] bg-[var(--s-bg-input)] border border-[var(--s-border)] rounded-md px-2 py-1 outline-none focus:border-[var(--s-accent)] min-w-0 text-[var(--s-text)] placeholder:text-[var(--s-text-subtle)]"
+        className="flex-1 text-[12px] bg-[var(--s-bg-input)] border border-[var(--s-border)] rounded-md px-2 py-1 outline-none focus:border-[var(--s-accent)] min-w-0 text-[var(--s-text)] placeholder:text-[var(--s-text-subtle)]"
       />
       <button
         onClick={() => onSave(name.trim())}

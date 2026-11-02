@@ -1,9 +1,10 @@
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import type { Layer } from "../../../data/studioTypes";
 import { trackEvent } from "../../../lib/tracker";
 import { findAncestorGroupIds } from "../../../utils/studio-layers";
 import { LayerRow } from "./LayerRow";
 import { emitLayerContextMenu } from "./layers-list-context-menu";
+import { onRenameLayer } from "../../../pages/studio-page/rename-layer-event";
 
 interface LayersListProps {
   layers: Layer[];
@@ -31,6 +32,13 @@ export const LayersList: React.FC<LayersListProps> = ({
   const lastClickedIdxRef = useRef<number | null>(null);
 
   const display = [...layers].reverse();
+
+  useEffect(
+    () => onRenameLayer((layerId) => {
+      if (layers.some((layer) => layer.id === layerId)) setEditingNameId(layerId);
+    }),
+    [layers],
+  );
 
   const toggleGroup = (id: string) => {
     setExpandedGroups((prev) => {
@@ -121,7 +129,7 @@ export const LayersList: React.FC<LayersListProps> = ({
 
   return (
     <div className={`flex flex-col font-editorial ${dense ? "" : "py-1"}`}>
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-1">
         {display.map((layer, visualIdx) => (
           <LayerRow
             key={layer.id}

@@ -1,31 +1,17 @@
 import { useCallback } from "react";
 import {
-  makeTextLayer,
-  makeShapeLayer,
-  makeUploadLayer,
-  makeVectorLayer,
-  makeInkLayer,
-  makeGroupLayer,
-  makeAdjustmentLayer,
-  placeTextLayer,
-  placeShapeLayer,
-  findSelectedLayers,
-  updateLayersRecursively,
+  makeTextLayer, makeShapeLayer, makeUploadLayer, makeVectorLayer, makeInkLayer, makeAdjustmentLayer,
+  placeTextLayer, placeShapeLayer, findSelectedLayers, updateLayersRecursively,
 } from "../../utils/studio-layers";
 import { trackEvent as trackPosthog } from "../../lib/analytics";
 import { trackEvent } from "../../lib/tracker";
 import { emitModal } from "../../lib/event-bus";
 import { buildScatterCollage } from "../../utils/scatter-collage";
 import type {
-  Layer,
-  ShapeType,
-  BezierAnchor,
-  VectorSettings,
-  GroupLayer,
-  UploadLayer,
-  InkPoint,
-  LayerPlacement,
+  Layer, ShapeType, BezierAnchor, VectorSettings, UploadLayer, InkPoint, LayerPlacement,
 } from "../../data/studioTypes";
+import { useLayerStructure, type LayerStructureHandlers } from "./use-layer-structure";
+import { useLayerClipboard, type LayerClipboardHandlers } from "./use-layer-clipboard";
 
 interface UseStudioLayersArgs {
   layers: Layer[];
@@ -36,12 +22,13 @@ interface UseStudioLayersArgs {
   setLayers: (updater: (prev: Layer[]) => Layer[] | Layer[]) => void;
   setSelectedIds: (ids: string[] | ((prev: string[]) => string[])) => void;
   pushHistory: () => void;
+  setEditingId?: (id: string | null) => void;
   targetFrameId?: string | null;
   targetFrameSize?: { width: number; height: number } | null;
   setLayersForFrame?: (frameId: string, updater: (prev: Layer[]) => Layer[]) => void;
 }
 
-export interface UseStudioLayersResult {
+export interface UseStudioLayersResult extends LayerStructureHandlers, LayerClipboardHandlers {
   handleAddText: (placement?: LayerPlacement) => void;
   handleAddShape: (shapeType: ShapeType, placement?: LayerPlacement) => void;
   handleAddImage: () => void;
@@ -52,10 +39,6 @@ export interface UseStudioLayersResult {
   handleAddInk: (strokes: InkPoint[][], settings: VectorSettings) => void;
   handleDeleteLayer: (id: string) => void;
   handleDuplicate: (ids: string[]) => void;
-  handleGroup: () => void;
-  handleUngroup: () => void;
-  handleMoveLayerUp: (id: string) => void;
-  handleMoveLayerDown: (id: string) => void;
   handleFlipLayerH: (id: string) => void;
   handleFlipLayerV: (id: string) => void;
   handleAlign: (alignment: string) => void;
@@ -71,12 +54,16 @@ export const useStudioLayers = ({
   setLayers,
   setSelectedIds,
   pushHistory,
+  setEditingId,
   targetFrameId = null,
   targetFrameSize = null,
   setLayersForFrame,
 }: UseStudioLayersArgs): UseStudioLayersResult => {
   const addW = targetFrameSize?.width ?? pageWidth;
   const addH = targetFrameSize?.height ?? pageHeight;
+
+  const structure = useLayerStructure({ layers, selectedIds, setLayers, setSelectedIds, pushHistory });
+  const clipboard = useLayerClipboard({ layers, selectedIds, setLayers, setSelectedIds, pushHistory });
 
   const commitNewLayer = useCallback(
     (layer: Layer, intoFrame: boolean) => {
@@ -97,7 +84,8 @@ export const useStudioLayers = ({
     trackPosthog("studio_layer_added", { type: "text", layer_id: l.id });
     trackEvent("studio", "layer_added", { details: { type: "text" } });
     commitNewLayer(l, !placement);
-  }, [addW, addH, background, layers.length, pushHistory, commitNewLayer]);
+    setEditingId?.(l.id);
+  }, [addW, addH, background, layers.length, pushHistory, commitNewLayer, setEditingId]);
 
   const handleAddShape = useCallback((shapeType: ShapeType, placement?: LayerPlacement) => {
     pushHistory();
@@ -207,75 +195,14 @@ export const useStudioLayers = ({
         y: l.y + 16,
         name: `${l.name} copy`,
       }));
+    trackEvent("studio", "layer_duplicated", { details: { count: clones.length } });
     setLayers((prev) => [...prev, ...clones]);
     setSelectedIds(clones.map((c) => c.id));
   }, [layers, pushHistory, setLayers, setSelectedIds]);
 
-  const handleGroup = useCallback(() => {
-    if (selectedIds.length < 2) return;
-    pushHistory();
-    const selectedLayers = layers.filter((l) => selectedIds.includes(l.id));
-    const newGroup = makeGroupLayer(selectedLayers);
-    trackPosthog("studio_layer_grouped", {
-      count: selectedLayers.length,
-      child_ids: selectedIds,
-      group_id: newGroup.id,
-    });
-    trackEvent("studio", "layer_grouped", { details: { count: selectedLayers.length } });
-    setLayers((prev) => {
-      const filtered = prev.filter((l) => !selectedIds.includes(l.id));
-      return [...filtered, newGroup];
-    });
-    setSelectedIds([newGroup.id]);
-  }, [selectedIds, layers, pushHistory, setLayers, setSelectedIds]);
-
-  const handleUngroup = useCallback(() => {
-    if (selectedIds.length !== 1) return;
-    const group = layers.find((l) => l.id === selectedIds[0]);
-    if (!group || group.type !== "group") return;
-    const groupLayer = group as GroupLayer;
-    pushHistory();
-    trackPosthog("studio_layer_ungrouped", {
-      group_id: group.id,
-      child_count: groupLayer.layers.length,
-    });
-    trackEvent("studio", "layer_ungrouped", { details: { count: groupLayer.layers.length } });
-    const children = groupLayer.layers.map((l) => ({
-      ...l,
-      x: l.x + group.x,
-      y: l.y + group.y,
-    }));
-    setLayers((prev) => {
-      const filtered = prev.filter((v) => v.id !== group.id);
-      return [...filtered, ...children];
-    });
-    setSelectedIds(children.map((c) => c.id));
-  }, [selectedIds, layers, pushHistory, setLayers, setSelectedIds]);
-
-  const handleMoveLayerUp = useCallback((id: string) => {
-    pushHistory();
-    setLayers((prev) => {
-      const idx = prev.findIndex((l) => l.id === id);
-      if (idx === -1 || idx === prev.length - 1) return prev;
-      const next = [...prev];
-      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
-      return next;
-    });
-  }, [pushHistory, setLayers]);
-
-  const handleMoveLayerDown = useCallback((id: string) => {
-    pushHistory();
-    setLayers((prev) => {
-      const idx = prev.findIndex((l) => l.id === id);
-      if (idx <= 0) return prev;
-      const next = [...prev];
-      [next[idx], next[idx - 1]] = [next[idx - 1], next[idx]];
-      return next;
-    });
-  }, [pushHistory, setLayers]);
-
   const handleFlipLayerH = useCallback((id: string) => {
     pushHistory();
+    trackEvent("studio", "layer_flipped", { details: { axis: "horizontal" } });
     setLayers((prev) =>
       prev.map((l) => (l.id === id ? ({ ...l, flipH: !l.flipH } as Layer) : l)),
     );
@@ -283,6 +210,7 @@ export const useStudioLayers = ({
 
   const handleFlipLayerV = useCallback((id: string) => {
     pushHistory();
+    trackEvent("studio", "layer_flipped", { details: { axis: "vertical" } });
     setLayers((prev) =>
       prev.map((l) => (l.id === id ? ({ ...l, flipV: !l.flipV } as Layer) : l)),
     );
@@ -294,6 +222,7 @@ export const useStudioLayers = ({
 
     const selectedLayers = findSelectedLayers(layers, selectedIds);
     if (selectedLayers.length === 0) return;
+    trackEvent("studio", "align_used", { details: { alignment, count: selectedLayers.length } });
 
     let targetBox = { minX: 0, minY: 0, maxX: pageWidth, maxY: pageHeight };
 
@@ -351,10 +280,8 @@ export const useStudioLayers = ({
     handleAddInk,
     handleDeleteLayer,
     handleDuplicate,
-    handleGroup,
-    handleUngroup,
-    handleMoveLayerUp,
-    handleMoveLayerDown,
+    ...structure,
+    ...clipboard,
     handleFlipLayerH,
     handleFlipLayerV,
     handleAlign,

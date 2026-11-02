@@ -4,6 +4,7 @@ import type { HandleDir } from "./SelectionHandles";
 import { SelectionHandles } from "./SelectionHandles";
 import { useLayerDrag } from "../hooks/useLayerDrag";
 import { useAdjustmentPreview } from "../hooks/useAdjustmentPreview";
+import { PIXELATE_MIN_SCALE } from "../canvas/canvas-transform";
 
 interface AdjustmentLayerViewProps {
   layer: AdjustmentLayer;
@@ -34,7 +35,7 @@ export const AdjustmentLayerView: React.FC<AdjustmentLayerViewProps> = ({
   const showChrome = selected && !hideSelectionUi;
   const previewUrl = useAdjustmentPreview(
     belowLayers, background, image,
-    layer.bitgrainEffect, layer.filters,
+    layer.bitgrainEffect, layer.filters, layer.colorGrade,
     { x: layer.x, y: layer.y, width: layer.width, height: layer.height },
     pageWidth, pageHeight,
   );
@@ -71,7 +72,7 @@ export const AdjustmentLayerView: React.FC<AdjustmentLayerViewProps> = ({
           src={previewUrl}
           draggable={false}
           className="w-full h-full block pointer-events-none"
-          style={{ imageRendering: "pixelated" }}
+          style={{ imageRendering: scale >= PIXELATE_MIN_SCALE ? "pixelated" : undefined }}
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center pointer-events-none text-[var(--s-text-subtle)]">

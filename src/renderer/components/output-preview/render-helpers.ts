@@ -1,4 +1,6 @@
 import type { AsciiTone, Palette } from "../../engine/types";
+import { glyphInk, isLightPaper } from "./ascii-ink";
+import { drawBrailleGlyph, isBrailleGlyph } from "./braille-dots";
 
 export const hexToRgb = (hex: string): [number, number, number] => {
   const v = parseInt(hex.slice(1), 16);
@@ -9,7 +11,7 @@ export const hexToRgb = (hex: string): [number, number, number] => {
 export const ASCII_FG = "#E6E6DE";
 export const ASCII_BG = "#0E0E12";
 export const ASCII_FG_LIGHT = "#141414";
-export const ASCII_BG_LIGHT = "#F4EFE4";
+export const ASCII_BG_LIGHT = "#E6E0D3";
 
 export const asciiSurface = (tone: AsciiTone): { fg: string; bg: string } =>
   tone === "light"
@@ -139,6 +141,26 @@ export const renderBitmap = (
   ctx.drawImage(buf, 0, 0, canvas.width, canvas.height);
 };
 
+interface GlyphCell {
+  char: string;
+  col: number;
+  row: number;
+  cellWidth: number;
+  cellHeight: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+const drawGlyph = (ctx: CanvasRenderingContext2D, cell: GlyphCell): void => {
+  const left = cell.col * cell.cellWidth;
+  const top = cell.row * cell.cellHeight;
+  if (isBrailleGlyph(cell.char)) {
+    drawBrailleGlyph(ctx, cell.char, left, top, cell.cellWidth, cell.cellHeight);
+    return;
+  }
+  ctx.fillText(cell.char, left + cell.offsetX, top + cell.offsetY);
+};
+
 export const renderChars = (
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
@@ -175,18 +197,19 @@ export const renderChars = (
         const idx = y * cols + x;
         const char = charData[idx];
         if (!char || char === " ") continue;
-        ctx.fillText(char, x * cw + ox, y * ch + oy);
+        drawGlyph(ctx, { char, col: x, row: y, cellWidth: cw, cellHeight: ch, offsetX: ox, offsetY: oy });
       }
     }
   } else {
+    const lightPaper = isLightPaper(bg);
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
         const idx = y * cols + x;
         const char = charData[idx];
         if (!char || char === " ") continue;
         const ci = idx * 4;
-        ctx.fillStyle = `rgb(${colorData[ci]},${colorData[ci + 1]},${colorData[ci + 2]})`;
-        ctx.fillText(char, x * cw + ox, y * ch + oy);
+        ctx.fillStyle = glyphInk(colorData[ci], colorData[ci + 1], colorData[ci + 2], lightPaper);
+        drawGlyph(ctx, { char, col: x, row: y, cellWidth: cw, cellHeight: ch, offsetX: ox, offsetY: oy });
       }
     }
   }

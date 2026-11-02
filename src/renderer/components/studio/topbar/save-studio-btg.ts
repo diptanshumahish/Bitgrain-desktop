@@ -2,6 +2,7 @@ import type { Layer, TemplateDef, TemplatePage } from "../../../data/studioTypes
 import { createStudioBTG, downloadBTG, type BTGStudioPage } from "../../../utils/btg-export";
 import { activeKit } from "../../../store/design-kits-store";
 import { collectStoredFonts } from "../fonts/custom-font-storage";
+import { trackEvent } from "../../../lib/tracker";
 
 interface SaveStudioBTGArgs {
   template: TemplateDef;
@@ -41,4 +42,5 @@ export const saveStudioBTG = ({
     activeKit() ?? undefined,
   );
   downloadBTG(project);
+  trackEvent("studio", "btg_downloaded", { details: { page_count: btgPages?.length ?? 1 } });
 };

@@ -1,10 +1,12 @@
 import React from "react";
 import { Lock, Unlock } from "lucide-react";
 import { ColorPicker } from "../ui/ColorPicker";
-import { ScrubField } from "../ui/panelPrimitives";
+import { ScrubField, Toggle } from "../ui/panelPrimitives";
+import { Dropdown } from "../ui/dropdown";
 import { PanelGroup } from "../ui/panel-group";
 import { useAspectLocked, toggleAspectLock } from "../../../store/aspect-lock-store";
 import { FRAME_PRESETS } from "../../../utils/frame-presets";
+import { FramePreviewCard } from "./frame/frame-preview-card";
 
 interface FramePropertiesProps {
   name: string;
@@ -27,6 +29,11 @@ interface FramePropertiesProps {
 
 const MIN_DIMENSION = 50;
 const CUSTOM_PRESET_VALUE = "custom";
+
+const PRESET_OPTIONS = [
+  { value: CUSTOM_PRESET_VALUE, label: "Custom size" },
+  ...FRAME_PRESETS.map((preset) => ({ value: preset.id, label: preset.label, group: preset.group })),
+];
 
 export const FrameProperties: React.FC<FramePropertiesProps> = ({
   name,
@@ -65,6 +72,13 @@ export const FrameProperties: React.FC<FramePropertiesProps> = ({
 
   return (
     <div className="flex flex-col font-editorial">
+      <FramePreviewCard
+        width={width}
+        height={height}
+        background={background}
+        caption={indexLabel ?? matchedPreset?.label ?? "Custom size"}
+      />
+
       <PanelGroup title="Name">
         <input
           type="text"
@@ -73,29 +87,17 @@ export const FrameProperties: React.FC<FramePropertiesProps> = ({
           placeholder={namePlaceholder}
           className="w-full px-2.5 h-8 rounded-md bg-[var(--s-bg-input)] text-[11.5px] text-[var(--s-text)] border border-[var(--s-border)] outline-none focus:border-[var(--s-accent)] transition-colors"
         />
-        {indexLabel && (
-          <span className="text-[10px] text-[var(--s-text-subtle)] [font-variant-numeric:tabular-nums]">
-            {indexLabel}
-          </span>
-        )}
       </PanelGroup>
 
       <PanelGroup title="Preset">
-        <select
+        <Dropdown
           value={matchedPreset?.id ?? CUSTOM_PRESET_VALUE}
-          onChange={(event) => {
-            const preset = FRAME_PRESETS.find((item) => item.id === event.target.value);
+          options={PRESET_OPTIONS}
+          onChange={(value) => {
+            const preset = FRAME_PRESETS.find((item) => item.id === value);
             if (preset) onResize(preset.width, preset.height);
           }}
-          className="w-full px-2.5 h-8 rounded-md bg-[var(--s-bg-input)] text-[11.5px] text-[var(--s-text)] border border-[var(--s-border)] outline-none focus:border-[var(--s-accent)] transition-colors"
-        >
-          <option value={CUSTOM_PRESET_VALUE}>custom</option>
-          {FRAME_PRESETS.map((preset) => (
-            <option key={preset.id} value={preset.id}>
-              {preset.label}
-            </option>
-          ))}
-        </select>
+        />
       </PanelGroup>
 
       <PanelGroup title="Background">
@@ -138,17 +140,7 @@ export const FrameProperties: React.FC<FramePropertiesProps> = ({
       </PanelGroup>
 
       {onClipChange && (
-        <PanelGroup title="Clip content">
-          <label className="flex items-center gap-2 text-[11.5px] text-[var(--s-text)] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={clip}
-              onChange={(event) => onClipChange(event.target.checked)}
-              className="accent-[var(--s-accent)]"
-            />
-            Clip content to page bounds
-          </label>
-        </PanelGroup>
+        <PanelGroup title="Clip content to page" actions={<Toggle value={clip} onChange={onClipChange} />} />
       )}
     </div>
   );

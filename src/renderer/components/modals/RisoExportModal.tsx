@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { X, Download, Layers } from "lucide-react";
+import { resolveExportPlan } from "../../lib/plan-gate/resolve-export-plan";
+import { X, Download, Layers, BookOpen } from "lucide-react";
 import { zipSync } from "fflate";
 import { trackEvent } from "../../lib/tracker";
 import { imageSignal } from "../../store/image-store";
@@ -10,7 +11,6 @@ import {
   MAX_RISO_INKS,
   getRisoInk,
 } from "../../engine/riso-inks";
-import { usePayment } from "../../hooks/usePayment";
 import { capLongEdgeForPlan } from "../../lib/plan-gate/plan-long-edge";
 import { watermarkCanvasForPlan } from "../../lib/plan-gate/watermark-for-plan";
 
@@ -97,7 +97,6 @@ const ChannelThumb: React.FC<{ data: ImageData; label: string; rgb: number[] }> 
 
 export const RisoExportModal: React.FC<RisoExportModalProps> = ({ onClose }) => {
   const imageUrl = imageSignal.value;
-  const { credits } = usePayment();
   const imgRef = useRef<HTMLImageElement | null>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const previewTokenRef = useRef(0);
@@ -161,23 +160,25 @@ export const RisoExportModal: React.FC<RisoExportModalProps> = ({ onClose }) => 
   };
 
   const exportZip = async () => {
+    const plan = await resolveExportPlan();
+    if (!plan) return;
     const img = imgRef.current;
     const inks = selectedInks();
     if (!img || inks.length === 0) return;
     setExporting(true);
-    const working = buildWorkingImageData(img, capLongEdgeForPlan(credits.plan, EXPORT_MAX));
+    const working = buildWorkingImageData(img, capLongEdgeForPlan(plan, EXPORT_MAX));
     if (!working) {
       setExporting(false);
       return;
     }
     const separated = await separateRiso(working, inks.map((ink) => ink.rgb));
     const files: Record<string, Uint8Array> = {
-      "preview.png": await imageDataToPng(separated.preview, credits.plan),
+      "preview.png": await imageDataToPng(separated.preview, plan),
     };
     for (let layer = 0; layer < separated.layers.length; layer += 1) {
       const ink = inks[layer];
       const name = `${String(layer + 1).padStart(2, "0")}-${ink.id}.png`;
-      files[name] = await imageDataToPng(separated.layers[layer], credits.plan);
+      files[name] = await imageDataToPng(separated.layers[layer], plan);
     }
     const zipped = zipSync(files, { level: 6 });
     triggerDownload(
@@ -186,6 +187,9 @@ export const RisoExportModal: React.FC<RisoExportModalProps> = ({ onClose }) => 
     );
     trackEvent("studio", "export_riso", {
       details: { format: "zip", page_count: separated.layers.length },
+    });
+    trackEvent("home", "riso_exported", {
+      details: { ink_ids: inks.map((ink) => ink.id), ink_count: inks.length },
     });
     setExporting(false);
     onClose();
@@ -200,9 +204,19 @@ export const RisoExportModal: React.FC<RisoExportModalProps> = ({ onClose }) => 
           <span className="text-sm font-semibold text-white flex items-center gap-2">
             <Layers size={14} /> risograph separation
           </span>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-3">
+            <a
+              href="/docs/03-effects/07-risograph-separations"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-white transition-colors no-underline"
+            >
+              <BookOpen size={12} /> Guide
+            </a>
+            <button onClick={() => { trackEvent("home", "riso_export_cancelled"); onClose(); }} className="text-zinc-500 hover:text-white transition-colors">
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="relative flex items-center justify-center overflow-hidden min-w-[min(280px,90vw)] min-h-[200px] max-h-[calc(90vh-260px)] bg-zinc-900">

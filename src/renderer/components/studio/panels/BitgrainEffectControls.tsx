@@ -13,6 +13,7 @@ import {
 import { ScrubField, Toggle } from "../ui/panelPrimitives";
 import { Dropdown } from "../ui/dropdown";
 import { Diamond } from "lucide-react";
+import { trackEvent } from "../../../lib/tracker";
 import {
   useAnimationMode,
   useActiveFrameIsOverride,
@@ -28,8 +29,12 @@ const NONE_VALUE = "__none__";
 const GROUPED_EFFECT_OPTIONS = [...BITGRAIN_EFFECTS]
   .sort(
     (a, b) =>
-      BITGRAIN_GROUP_ORDER.indexOf(BITGRAIN_GROUPS[a.kind] as (typeof BITGRAIN_GROUP_ORDER)[number]) -
-      BITGRAIN_GROUP_ORDER.indexOf(BITGRAIN_GROUPS[b.kind] as (typeof BITGRAIN_GROUP_ORDER)[number]),
+      BITGRAIN_GROUP_ORDER.indexOf(
+        BITGRAIN_GROUPS[a.kind] as (typeof BITGRAIN_GROUP_ORDER)[number],
+      ) -
+      BITGRAIN_GROUP_ORDER.indexOf(
+        BITGRAIN_GROUPS[b.kind] as (typeof BITGRAIN_GROUP_ORDER)[number],
+      ),
   )
   .map((entry) => ({
     value: entry.kind,
@@ -44,10 +49,14 @@ export const BitgrainEffectControls: React.FC<BitgrainEffectControlsProps> = ({
   const handleKindChange = (value: string) => {
     if (value === NONE_VALUE) {
       onChange(undefined);
+      trackEvent("studio", "effect_removed", {
+        details: { effect_kind: effect?.kind ?? null },
+      });
       return;
     }
     const next = value as BitgrainEffectKind;
     onChange({ kind: next, params: defaultParamsFor(next) });
+    trackEvent("studio", "effect_applied", { details: { effect_kind: next } });
   };
 
   const updateParam = (key: string, value: number | string | boolean) => {
@@ -64,24 +73,16 @@ export const BitgrainEffectControls: React.FC<BitgrainEffectControlsProps> = ({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        <span className="text-[11px] text-[var(--s-text-subtle)] font-medium">
-          Bitgrain effects
-        </span>
-        <Dropdown
-          value={effect?.kind ?? NONE_VALUE}
-          onChange={handleKindChange}
-          options={[
-            { value: NONE_VALUE, label: "None" },
-            ...GROUPED_EFFECT_OPTIONS,
-          ]}
-        />
-      </div>
+      <Dropdown
+        value={effect?.kind ?? NONE_VALUE}
+        onChange={handleKindChange}
+        options={[
+          { value: NONE_VALUE, label: "No effect" },
+          ...GROUPED_EFFECT_OPTIONS,
+        ]}
+      />
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[11px] text-[var(--s-text-subtle)] font-medium">
-          Creative effects
-        </span>
         {animationMode && effect && (
           <div
             className={`flex items-start gap-1.5 rounded-md px-2 py-1.5 text-[10.5px] leading-snug ${
@@ -102,60 +103,56 @@ export const BitgrainEffectControls: React.FC<BitgrainEffectControlsProps> = ({
         {spec && effect && spec.params.length > 0 ? (
           <div className="flex flex-col gap-1.5">
             {spec.params.map((param) => {
-            if (param.type === "number") {
+              if (param.type === "number") {
+                const raw = effect.params[param.key];
+                const value = typeof raw === "number" ? raw : param.default;
+                return (
+                  <ScrubField
+                    key={param.key}
+                    label={param.label}
+                    value={value}
+                    min={param.min}
+                    max={param.max}
+                    step={param.step}
+                    onChange={(v) => updateParam(param.key, v)}
+                  />
+                );
+              }
+              if (param.type === "select") {
+                const raw = effect.params[param.key];
+                const value = typeof raw === "string" ? raw : param.default;
+                return (
+                  <div key={param.key} className="flex flex-col gap-1">
+                    <span className="text-[11px] text-[var(--s-text-subtle)] font-medium">
+                      {param.label}
+                    </span>
+                    <Dropdown
+                      value={value}
+                      onChange={(v) => updateParam(param.key, v)}
+                      options={param.options}
+                    />
+                  </div>
+                );
+              }
               const raw = effect.params[param.key];
-              const value = typeof raw === "number" ? raw : param.default;
+              const value = typeof raw === "boolean" ? raw : param.default;
               return (
-                <ScrubField
+                <div
                   key={param.key}
-                  label={param.label}
-                  value={value}
-                  min={param.min}
-                  max={param.max}
-                  step={param.step}
-                  onChange={(v) => updateParam(param.key, v)}
-                />
-              );
-            }
-            if (param.type === "select") {
-              const raw = effect.params[param.key];
-              const value = typeof raw === "string" ? raw : param.default;
-              return (
-                <div key={param.key} className="flex flex-col gap-1">
+                  className="flex items-center justify-between"
+                >
                   <span className="text-[11px] text-[var(--s-text-subtle)] font-medium">
                     {param.label}
                   </span>
-                  <Dropdown
+                  <Toggle
                     value={value}
                     onChange={(v) => updateParam(param.key, v)}
-                    options={param.options}
                   />
                 </div>
               );
-            }
-            const raw = effect.params[param.key];
-            const value = typeof raw === "boolean" ? raw : param.default;
-            return (
-              <div
-                key={param.key}
-                className="flex items-center justify-between"
-              >
-                <span className="text-[11px] text-[var(--s-text-subtle)] font-medium">
-                  {param.label}
-                </span>
-                <Toggle
-                  value={value}
-                  onChange={(v) => updateParam(param.key, v)}
-                />
-              </div>
-            );
             })}
           </div>
-        ) : (
-          <span className="text-[10.5px] text-[var(--s-text-subtle)]">
-            None applied
-          </span>
-        )}
+        ) : null}
       </div>
     </div>
   );

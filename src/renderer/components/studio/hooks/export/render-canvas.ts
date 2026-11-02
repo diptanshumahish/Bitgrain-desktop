@@ -9,7 +9,7 @@ import type {
   InkLayer,
   AdjustmentLayer,
 } from "../../../../data/studioTypes";
-import { applyFlip, applyRotation, containFit, coverFit, loadImage } from "./image-helpers";
+import { applyFlip, applyRotation, drawFitted, loadImage } from "./image-helpers";
 import { drawText } from "./text/draw-text";
 import { laidOutChildren } from "../../../../utils/auto-layout";
 import { drawShapeLayer, drawUploadLayer } from "./draw-shape-upload";
@@ -129,12 +129,7 @@ const drawImageLayer = async (
     ctx.clip();
     ctx.globalAlpha = layer.opacity;
     ctx.imageSmoothingEnabled = false;
-    if (layer.fit === "cover")
-      coverFit(ctx, sourceForDraw, layer.x * s, layer.y * s, layer.width * s, layer.height * s);
-    else if (layer.fit === "contain")
-      containFit(ctx, sourceForDraw, layer.x * s, layer.y * s, layer.width * s, layer.height * s);
-    else
-      ctx.drawImage(sourceForDraw, layer.x * s, layer.y * s, layer.width * s, layer.height * s);
+    drawFitted(ctx, sourceForDraw, layer.fit, { x: layer.x * s, y: layer.y * s, width: layer.width * s, height: layer.height * s }, layer.crop);
     ctx.globalAlpha = 1;
     ctx.restore();
   } catch {

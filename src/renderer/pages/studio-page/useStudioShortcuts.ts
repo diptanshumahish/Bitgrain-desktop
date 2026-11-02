@@ -3,6 +3,7 @@ import { trackEvent as trackPosthog } from "../../lib/analytics";
 import { trackEvent } from "../../lib/tracker";
 import { markClean } from "../../store/studio-save-status";
 import type { Layer } from "../../data/studioTypes";
+import { emitStudioCommand } from "./studio-command-event";
 
 interface UseStudioShortcutsArgs {
   undo: () => void;
@@ -52,12 +53,14 @@ export const useStudioShortcuts = ({
         e.preventDefault();
         if (e.shiftKey) redo();
         else undo();
+        trackEvent("studio", e.shiftKey ? "redo_used" : "undo_used", { details: { source: "shortcut" } });
         return;
       }
       if ((e.metaKey || e.ctrlKey) && e.code === "KeyY") {
         if ((e.target as HTMLElement | null)?.closest("input, textarea, [contenteditable]")) return;
         e.preventDefault();
         redo();
+        trackEvent("studio", "redo_used", { details: { source: "shortcut" } });
         return;
       }
       if (e.key === "Escape") {
@@ -109,11 +112,14 @@ export const useStudioShortcuts = ({
       if ((e.metaKey || e.ctrlKey) && (e.key === "d" || e.key === "D")) {
         if ((e.target as HTMLElement | null)?.closest("input, textarea, [contenteditable]")) return;
         e.preventDefault();
-        if (selectedIds.length > 0 && !editingId) {
-          handleDuplicate(selectedIds);
-        } else {
-          handleDuplicatePage();
-        }
+        if (selectedIds.length > 0 && !editingId) handleDuplicate(selectedIds);
+        else if (selectedFramePageId && selectedIds.length === 0) handleDuplicatePage();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.code === "KeyA" && !e.shiftKey) {
+        if ((e.target as HTMLElement | null)?.closest("input, textarea, [contenteditable]")) return;
+        e.preventDefault();
+        emitStudioCommand("select-all");
         return;
       }
     };

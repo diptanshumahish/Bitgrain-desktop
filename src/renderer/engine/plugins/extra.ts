@@ -6,6 +6,7 @@ const BYTE_MAX = 255;
 const DOT_PITCH = 6;
 const DOT_RADIUS_RATIO = 0.42;
 const DOT_GAP_LEVEL = 14;
+const DOT_GLOW = 1.7;
 const BLOCK_SIZE = 8;
 const BLOCK_LEVELS = 5;
 const GRUNGE_CHARS = 'X%&8BW#MWQL&';
@@ -60,7 +61,8 @@ const createResult = (ctx: TransformContext): TransformationResult => ({
 });
 
 const paintDotCell = (ctx: TransformContext, result: TransformationResult, left: number, top: number): void => {
-  const tone = toneFor(averageBlock(ctx, left, top, DOT_PITCH), ctx.isColor);
+  const base = toneFor(averageBlock(ctx, left, top, DOT_PITCH), ctx.isColor);
+  const tone: Rgb = [clampByte(base[0] * DOT_GLOW), clampByte(base[1] * DOT_GLOW), clampByte(base[2] * DOT_GLOW)];
   const gap: Rgb = [DOT_GAP_LEVEL, DOT_GAP_LEVEL, DOT_GAP_LEVEL];
   const center = DOT_PITCH / 2;
   const radius = DOT_PITCH * DOT_RADIUS_RATIO;

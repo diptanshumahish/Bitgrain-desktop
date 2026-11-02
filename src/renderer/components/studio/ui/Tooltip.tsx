@@ -42,6 +42,7 @@ export const Tooltip: React.FC<TooltipProps> = ({ content, children, delay = 400
       ref={targetRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onPointerDown={handleMouseLeave}
       className="inline-flex items-center justify-center"
     >
       {children}

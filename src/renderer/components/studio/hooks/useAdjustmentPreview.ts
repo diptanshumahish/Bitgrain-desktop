@@ -9,6 +9,9 @@ import { applyBitgrainEffectAsync } from "../../../utils/bitgrain-effect";
 import { constructFilterString } from "../../../utils/filter-utils";
 import { renderToCanvas } from "./export/render-canvas";
 import { ADJUSTMENT_WORKING_MAX } from "./effect-working-resolution";
+import type { ColorGrade } from "../../../modules/grading/engine/grade-types";
+import { isNeutralGrade } from "../../../modules/grading/engine/grade-checks";
+import { gradeCanvasInPlace } from "../../../modules/grading/studio/grade-canvas";
 
 const THROTTLE_MS = 80;
 
@@ -30,17 +33,20 @@ const buildKey = (
   image: string | null,
   effect: BitgrainEffect | undefined,
   filters: ImageFilters | undefined,
+  grade: ColorGrade | undefined,
   region: AdjustmentRegion,
   pageWidth: number,
   pageHeight: number,
 ): string | null => {
-  if (!effect && !constructFilterString(filters)) return null;
+  const gradeActive = !isNeutralGrade(grade);
+  if (!effect && !constructFilterString(filters) && !gradeActive) return null;
   return JSON.stringify({
     layers: belowLayers,
     background,
     image,
     effect: effect ?? null,
     filters: filters ?? null,
+    grade: gradeActive ? grade : null,
     region,
     pageWidth,
     pageHeight,
@@ -53,6 +59,7 @@ export const useAdjustmentPreview = (
   image: string | null,
   effect: BitgrainEffect | undefined,
   filters: ImageFilters | undefined,
+  grade: ColorGrade | undefined,
   region: AdjustmentRegion,
   pageWidth: number,
   pageHeight: number,
@@ -60,7 +67,7 @@ export const useAdjustmentPreview = (
   const [cached, setCached] = useState<CachedPreview | null>(null);
   const lastRunRef = useRef(0);
   const currentKey = buildKey(
-    belowLayers, background, image, effect, filters, region, pageWidth, pageHeight,
+    belowLayers, background, image, effect, filters, grade, region, pageWidth, pageHeight,
   );
 
   useEffect(() => {
@@ -102,6 +109,7 @@ export const useAdjustmentPreview = (
         const cropCtx = crop.getContext("2d");
         if (!cropCtx) return;
         cropCtx.drawImage(composite, sx, sy, sw, sh, 0, 0, sw, sh);
+        gradeCanvasInPlace(crop, grade);
 
         let processed: HTMLCanvasElement = crop;
         if (effect) {

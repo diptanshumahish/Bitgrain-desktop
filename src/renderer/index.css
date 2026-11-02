@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @custom-variant dark (&:where(.dark, .dark *));
 
 
@@ -18,6 +19,33 @@
   );
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+.dark .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #18181b 0%,
+    #26262a 40%,
+    #18181b 60%,
+    #18181b 100%
+  );
+  background-size: 200% 100%;
+}
+
+@keyframes template-card-in {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.template-card-in {
+  animation: template-card-in 320ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer,
+  .template-card-in {
+    animation: none;
+  }
 }
 
 @keyframes marquee-anim {
@@ -203,6 +231,32 @@
 }
 .animate-panel-in-right { animation: panel-in-right 0.24s cubic-bezier(.2,.8,.2,1) both; }
 
+@keyframes tab-in-from-right {
+  from { opacity: 0; transform: translateX(14px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes tab-in-from-left {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: none; }
+}
+.animate-tab-in-right { animation: tab-in-from-right 0.22s cubic-bezier(.2,.8,.2,1) both; }
+.animate-tab-in-left  { animation: tab-in-from-left 0.22s cubic-bezier(.2,.8,.2,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-tab-in-right, .animate-tab-in-left { animation: none; }
+}
+
+@keyframes elements-empty-pulse {
+  0%, 100% { opacity: 0.45; transform: translateY(0); }
+  50%      { opacity: 1; transform: translateY(-3px); }
+}
+.elements-empty-tile { animation: elements-empty-pulse 3.2s ease-in-out infinite; transform-box: fill-box; }
+.elements-empty-tile-2 { animation-delay: 0.4s; }
+.elements-empty-tile-3 { animation-delay: 0.8s; }
+.elements-empty-tile-4 { animation-delay: 1.2s; }
+@media (prefers-reduced-motion: reduce) {
+  .elements-empty-tile { animation: none; opacity: 0.8; }
+}
+
 @keyframes export-star-emit {
   0%   { transform: translate(0, 0) scale(0.2); opacity: 0; }
   20%  { opacity: 0.9; }
@@ -242,41 +296,38 @@
 }
 
 /* ── Platform Theme Colors ───────────────────────────────────────────────
-   The two swappable source colors for the whole platform. Change these and
-   every accent, focus, selection and tint below re-derives automatically. */
+   Base-inspired monochromatic system. Ink primary is near-black; the single
+   accent is Base's signal blue, used sparingly for action and focus. */
 :root {
-  --brand-primary: #820000;
-  --brand-secondary: #E8A33D;
+  --brand-primary: #000000;
+  --brand-secondary: #141414;
 }
 
-/* Brand-derived color utilities. `inline` lets Tailwind reference the
-   swappable source vars directly instead of snapshotting their value. */
 @theme inline {
-  /* Decorative pastel palette — light tints so dark text stays readable on them. */
-  --color-brand-accent: color-mix(in srgb, var(--brand-primary) 40%, white);
-  --color-theme: color-mix(in srgb, var(--brand-primary) 40%, white);
-  --color-accent-purple: color-mix(in srgb, var(--brand-primary) 40%, white);
-  --color-accent-yellow: color-mix(in srgb, var(--brand-secondary) 45%, white);
-  --color-accent-orange: color-mix(in srgb, var(--brand-secondary) 32%, white);
+  --color-brand-accent: #141414;
+  --color-theme: #000000;
+  --color-accent-purple: #141414;
+  --color-accent-yellow: #FFC043;
+  --color-accent-orange: #ED6E33;
 }
 
 @theme {
-  --color-brand-primary: #F2F4F7;
-  --color-brand-secondary: #1A1A1A;
-  --color-accent-lime: #D9F99D;
+  --color-brand-primary: #FFFFFF;
+  --color-brand-secondary: #000000;
+  --color-accent-lime: #05A357;
 
-  --radius-neo: 16px;
-  --radius-neo-lg: 24px;
+  --radius-neo: 8px;
+  --radius-neo-lg: 12px;
   --radius-pill: 9999px;
 
-  --shadow-neo: none;
-  --shadow-neo-lg: none;
+  --shadow-neo: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-neo-lg: 0 2px 8px rgba(0, 0, 0, 0.06);
 
-  --font-editorial: "Akasha", sans-serif;
-  --font-sans: "Akasha", sans-serif;
-  --font-mono: "Akasha", sans-serif;
-  --font-serif: "Akasha", sans-serif;
-  --font-minecraft: "Akasha", sans-serif;
+  --font-editorial: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-serif: "Manrope", -apple-system, BlinkMacSystemFont, serif;
+  --font-minecraft: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @utility rendering-pixelated {
@@ -287,29 +338,19 @@
   padding-bottom: max(4px, env(safe-area-inset-bottom));
 }
 
-@font-face {
-  font-family: "Akasha";
-  src: url("/Akasha-Regular.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-  size-adjust: 165%;
-}
-
-@font-face {
-  font-family: "Akasha";
-  src: url("/Akasha-Italic.ttf") format("truetype");
-  font-weight: normal;
-  font-style: italic;
-  font-display: swap;
-  size-adjust: 165%;
-}
-
 @layer base {
 
   body {
-    @apply bg-[#F2F4F7] text-[#1A1A1A] antialiased selection:bg-[var(--s-accent)] selection:text-[var(--s-accent-text)];
-    font-family: "Akasha", sans-serif;
+    @apply bg-white text-[#141414] antialiased selection:bg-[var(--s-accent)] selection:text-[var(--s-accent-text)];
+    font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-feature-settings: "ss01", "cv11";
+    letter-spacing: -0.005em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
   }
 
   /* Global Scrollbar Hiding */
@@ -331,38 +372,36 @@
 
 @layer components {
   .brutalist-card {
-    @apply bg-white border border-black/5 rounded-[var(--radius-neo-lg)];
+    @apply bg-white border border-[#E2E2E2] rounded-lg;
   }
 
   .brutalist-panel {
-    @apply bg-white border-r border-black/5;
+    @apply bg-white border-r border-[#E2E2E2];
   }
 
   .brutalist-button {
-    @apply px-6 py-2.5 bg-[#1A1A1A] text-white font-medium rounded-full
-           hover:bg-[#2A2A2A] active:scale-[0.98]
-           transition-all duration-200 border border-transparent;
+    @apply inline-flex items-center justify-center px-5 py-2.5 bg-[#141414] text-white text-sm font-medium rounded-md
+           hover:bg-[#000000] active:bg-[#000000]
+           transition-colors duration-150 border border-transparent;
   }
 
   .brutalist-input {
-    @apply bg-[#F2F4F7] border border-black/5 px-4 py-2.5 text-[#1A1A1A] rounded-full
-           focus:outline-none focus:ring-2 focus:ring-[var(--s-accent)]/20 focus:border-[var(--s-accent)] transition-all duration-200;
+    @apply bg-white border border-[#E2E2E2] px-3.5 py-2.5 text-[#141414] text-sm rounded-md
+           focus:outline-none focus:border-[#141414] focus:ring-2 focus:ring-[#141414]/10 transition-colors duration-150;
   }
 
-  /* Custom Range Input */
   input[type="range"] {
-    @apply appearance-none bg-[#E8E1D8] h-2 border-none rounded-full outline-none;
+    @apply appearance-none bg-[#EEEEEE] h-1 border-none rounded-full outline-none;
   }
 
   input[type="range"]::-webkit-slider-thumb {
-    @apply appearance-none w-4 h-4 bg-white border border-[#C8C0B5] cursor-pointer rounded-full;
+    @apply appearance-none w-4 h-4 bg-[#141414] border-0 cursor-pointer rounded-full;
   }
 
   input[type="range"]::-moz-range-thumb {
-    @apply w-4 h-4 bg-white border border-[#C8C0B5] cursor-pointer rounded-full;
+    @apply w-4 h-4 bg-[#141414] border-0 cursor-pointer rounded-full;
   }
 
-  /* Custom Scrollbar */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -372,13 +411,13 @@
   }
 
   .blog-page {
-    font-family: "Akasha", sans-serif !important;
+    font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   }
 
   .blog-body {
     @apply font-sans;
-    font-family: "Akasha", sans-serif !important;
-    line-height: 1.6;
+    font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    line-height: 1.65;
     letter-spacing: -0.01em;
   }
 
@@ -394,28 +433,29 @@
 
 /* ── Studio Theme Variables ─────────────────────────────────────────────── */
 :root {
-  /* Studio Theme Defaults (Light) */
-  --s-bg-canvas: #EBEDF1;
-  --s-bg-panel: #FBFBFC;
-  --s-bg-panel-alt: #F4F5F7;
-  --s-bg-input: #ECEEF2;
-  --s-bg-input-hover: #E2E5EA;
-  --s-border: rgba(17, 17, 24, 0.08);
-  --s-border-strong: #1A1A1A;
-  --s-border-focus: var(--brand-primary);
-  --s-text: #0F1115;
-  --s-text-muted: #50535D;
-  --s-text-subtle: #8A929D;
-  --s-dot: #CDD0D6;
-  --s-accent: oklch(from var(--brand-primary) min(l, 0.5) c h);
+  --s-bg-canvas: #F6F6F6;
+  --s-bg-panel: #FFFFFF;
+  --s-bg-panel-alt: #FAFAFA;
+  --s-bg-input: #F2F2F2;
+  --s-bg-input-hover: #EBEBEB;
+  --s-border: #E2E2E2;
+  --s-border-strong: #141414;
+  --s-border-focus: #141414;
+  --s-text: #141414;
+  --s-text-muted: #545454;
+  --s-text-subtle: #6B6B6B;
+  --s-dot: #D4D4D4;
+  --s-accent: #141414;
   --s-accent-text: #FFFFFF;
-  --s-accent-soft: color-mix(in srgb, var(--brand-primary) 10%, transparent);
-  --s-selection: color-mix(in srgb, var(--brand-primary) 20%, transparent);
-  --s-handle: var(--brand-primary);
-  --s-shadow: none;
-  --s-rule: rgba(17, 17, 24, 0.06);
-  --s-ink-mono: "Akasha", sans-serif;
-  --s-font-editorial: "Akasha", sans-serif;
+  --s-accent-soft: rgba(20, 20, 20, 0.06);
+  --s-selection: rgba(20, 20, 20, 0.14);
+  --s-handle: var(--s-canvas-selection);
+  --s-canvas-selection: #3b82f6;
+  --s-canvas-selection-fill: rgba(59, 130, 246, 0.32);
+  --s-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --s-rule: #EEEEEE;
+  --s-ink-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --s-font-editorial: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   /* Docs Theme (Light) */
   --docs-bg-sidebar: #fbfbfa;
@@ -447,27 +487,27 @@
 
 [data-theme="dark"],
 .dark {
-  --s-bg-canvas: #0B0B11;
-  --s-bg-panel: #14151C;
-  --s-bg-panel-alt: #1A1B23;
-  --s-bg-input: #23242D;
-  --s-bg-input-hover: #2C2D37;
-  --s-border: rgba(255, 255, 255, 0.08);
+  --s-bg-canvas: #000000;
+  --s-bg-panel: #0A0A0A;
+  --s-bg-panel-alt: #141414;
+  --s-bg-input: #1C1C1C;
+  --s-bg-input-hover: #262626;
+  --s-border: #262626;
   --s-border-strong: #FFFFFF;
-  --s-border-focus: var(--s-accent);
-  --s-text: #F4F5FA;
-  --s-text-muted: #C2C3CE;
-  --s-text-subtle: #AEB0BF;
-  --s-dot: #1E1F26;
-  --s-accent: oklch(from var(--brand-primary) 0.52 c h);
-  --s-accent-text: #FFFFFF;
-  --s-accent-soft: color-mix(in srgb, var(--s-accent) 20%, transparent);
-  --s-selection: color-mix(in srgb, var(--s-accent) 25%, transparent);
-  --s-handle: var(--s-accent);
-  --s-shadow: none;
-  --s-rule: rgba(255, 255, 255, 0.04);
-  --s-ink-mono: "Akasha", sans-serif;
-  --s-font-editorial: "Akasha", sans-serif;
+  --s-border-focus: #FFFFFF;
+  --s-text: #F6F6F6;
+  --s-text-muted: #A3A3A3;
+  --s-text-subtle: #8C8C8C;
+  --s-dot: #262626;
+  --s-accent: #FFFFFF;
+  --s-accent-text: #000000;
+  --s-accent-soft: rgba(255, 255, 255, 0.08);
+  --s-selection: rgba(255, 255, 255, 0.16);
+  --s-handle: var(--s-canvas-selection);
+  --s-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --s-rule: #1C1C1C;
+  --s-ink-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --s-font-editorial: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   /* Docs Theme (Dark) */
   --docs-bg-sidebar: #0b0b0c;
@@ -514,39 +554,6 @@
   --s-dot: color-mix(in srgb, var(--brand-primary) 22%, #FFFFFF);
 }
 
-/* Studio range slider — overrides the global default */
-.studio-slider {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  height: 5px !important;
-  border: none !important;
-  border-radius: 99px !important;
-  outline: none !important;
-  box-shadow: none !important;
-  background: var(--s-bg-input) !important;
-  cursor: pointer !important;
-}
-
-.studio-slider::-webkit-slider-thumb {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  width: 13px !important;
-  height: 13px !important;
-  border-radius: 50% !important;
-  background: var(--s-accent) !important;
-  border: 2px solid white !important;
-  cursor: pointer !important;
-}
-
-.studio-slider::-moz-range-thumb {
-  width: 13px !important;
-  height: 13px !important;
-  border-radius: 50% !important;
-  background: var(--s-accent) !important;
-  border: 2px solid white !important;
-  cursor: pointer !important;
-}
-
 /* Blog Specific Styles */
 .shadow-neo-xl {
   box-shadow: none;
@@ -589,10 +596,10 @@ input[type="number"] {
 
 /* ── MonoLabel utility ─────────────────────────────────────────────────── */
 .s-mono-label {
-  font-family: "Akasha", sans-serif;
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   color: var(--s-text-subtle);
 }
 
@@ -604,13 +611,15 @@ input[type="number"] {
 
 /* ── Studio font helpers ───────────────────────────────────────────────── */
 .s-font-editorial {
-  font-family: "Akasha", sans-serif;
+  font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: -0.015em;
 }
 .s-font-serif {
-  font-family: "Akasha", sans-serif;
+  font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: -0.01em;
 }
 .s-font-mono {
-  font-family: "Akasha", sans-serif;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* ── Popover Morph Animation ────────────────────────────────────────── */
@@ -856,4 +865,129 @@ input[type="number"] {
 .docs-anchor {
   text-decoration: none;
   color: var(--docs-marker);
+}
+
+@keyframes dice-roll {
+  0%   { transform: rotate(0deg) scale(1); }
+  20%  { transform: rotate(-25deg) scale(0.8); }
+  65%  { transform: rotate(400deg) scale(1.25); }
+  85%  { transform: rotate(350deg) scale(0.95); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes dice-ring-pulse {
+  0%   { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.dice-face.dice-rolling {
+  animation: dice-roll 0.55s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.dice-ring.dice-rolling {
+  animation: dice-ring-pulse 0.5s ease-out 0.28s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-face.dice-rolling,
+  .dice-ring.dice-rolling {
+    animation: none;
+  }
+}
+
+@keyframes mosh-toast-in {
+  0%   { opacity: 0; transform: translate(-50%, 14px) scale(0.9); }
+  60%  { opacity: 1; transform: translate(-50%, -3px) scale(1.03); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+@keyframes mosh-toast-out {
+  0%   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, 8px) scale(0.96); }
+}
+
+@keyframes mosh-toast-badge-spin {
+  0%   { transform: rotate(-90deg) scale(0.6); }
+  70%  { transform: rotate(20deg) scale(1.1); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+.mosh-toast-in { animation: mosh-toast-in 0.42s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+.mosh-toast-out { animation: mosh-toast-out 0.26s ease-in both; }
+.mosh-toast-in .mosh-toast-badge { animation: mosh-toast-badge-spin 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mosh-toast-in { animation: none; transform: translateX(-50%); }
+  .mosh-toast-in .mosh-toast-badge { animation: none; }
+  .mosh-toast-out { animation: none; opacity: 0; }
+}
+
+:where(
+  button, a, select, summary, [role="switch"], [role="button"], [tabindex]:not([contenteditable]),
+  input:is([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"], [type="reset"], [type="color"], [type="file"])
+):focus-visible {
+  outline: 2px solid var(--s-accent) !important;
+  outline-offset: 2px;
+}
+
+#main-content:focus-visible {
+  outline: none !important;
+}
+
+
+/* ---- Desktop additions (see PORTED.md, deviation 4) ----
+   Akasha is still the default studio text face (utils/studio-layers.ts) and the
+   forked video module's template face; the web stopped declaring it, so the
+   desktop keeps its bundled @font-face. `.studio-slider` is used only by the
+   forked video module. UI faces (Manrope, JetBrains Mono, ...) are bundled under
+   public/fonts/google and linked from index.html instead of the Google CDN. */
+@font-face {
+  font-family: "Akasha";
+  src: url("/Akasha-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 165%;
+}
+
+@font-face {
+  font-family: "Akasha";
+  src: url("/Akasha-Italic.ttf") format("truetype");
+  font-weight: normal;
+  font-style: italic;
+  font-display: swap;
+  size-adjust: 165%;
+}
+
+/* Studio range slider — overrides the global default */
+.studio-slider {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  height: 5px !important;
+  border: none !important;
+  border-radius: 99px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: var(--s-bg-input) !important;
+  cursor: pointer !important;
+}
+
+.studio-slider::-webkit-slider-thumb {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: 13px !important;
+  height: 13px !important;
+  border-radius: 50% !important;
+  background: var(--s-accent) !important;
+  border: 2px solid white !important;
+  cursor: pointer !important;
+}
+
+.studio-slider::-moz-range-thumb {
+  width: 13px !important;
+  height: 13px !important;
+  border-radius: 50% !important;
+  background: var(--s-accent) !important;
+  border: 2px solid white !important;
+  cursor: pointer !important;
 }

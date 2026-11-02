@@ -1,9 +1,10 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   ChevronLeft, Undo2, Redo2, Download, Type, Square, Image as ImageIcon,
   Copy, ArrowUp, ArrowDown, SlidersHorizontal, Plus, Minus, Maximize2, Palette, Layers, Scaling, Frame,
 } from "lucide-react";
 import { emitModal } from "../../../lib/event-bus";
+import { trackEvent } from "../../../lib/tracker";
 import { SaveStatus } from "../../../components/studio/topbar/SaveStatus";
 import { MobileStudioCanvas } from "./MobileStudioCanvas";
 import { MobileLayerSheet } from "./MobileLayerSheet";
@@ -55,7 +56,7 @@ const TopButton: React.FC<{ icon: React.ReactNode; label: string; onClick: () =>
 export const MobileStudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
   const {
     effectiveTemplate, background, layers, selectedIds, selectedLayer, image,
-    canvasW, canvasH, editingId, past, future, pages, activePageId,
+    canvasW, canvasH, editingId, past, future, pages, activePageId, dark,
     setSelectedIds, setLayers, setEditingId, pushHistory, undo, redo,
     updateLayer, commitUpdate, handleExit, setBackground,
     handleAddText, handleAddShape, handleAddImageFromUrl, handleResizeToFormats, handleAddMockupPage,
@@ -66,7 +67,6 @@ export const MobileStudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => 
   const [addOpen, setAddOpen] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const [userZoom, setUserZoom] = useState(1);
-  const exportRef = useRef<HTMLButtonElement>(null);
 
   const selectedId = selectedLayer?.id ?? null;
 
@@ -102,40 +102,40 @@ export const MobileStudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => 
   };
 
   const openExport = (): void => {
-    const rect = exportRef.current?.getBoundingClientRect() ?? new DOMRect(0, 0, 0, 0);
     exportPopupSignal.value = {
       template: effectiveTemplate,
       background,
       layers,
       image,
-      anchorRect: rect,
       pages,
       activePageId,
     };
   };
 
   return (
-    <main className="flex flex-col h-dvh overflow-hidden font-editorial bg-[var(--s-bg-canvas)]">
+    <main
+      data-theme={dark ? "dark" : "light"}
+      className="flex flex-col h-dvh overflow-hidden font-editorial bg-[var(--s-bg-canvas)]"
+    >
       <header className="flex items-center justify-between px-3 py-2 border-b border-[var(--s-border)] shrink-0">
         <div className="flex items-center gap-1">
-          <TopButton icon={<ChevronLeft size={18} strokeWidth={2} />} label="back" onClick={handleExit} />
-          <TopButton icon={<Layers size={17} strokeWidth={2} />} label="layers" onClick={() => { setSheetOpen(false); setAddOpen(false); setLayersOpen((v) => !v); }} />
-          <TopButton icon={<Scaling size={17} strokeWidth={2} />} label="resize" onClick={() => emitModal({ type: "resize", sourceWidth: canvasW, sourceHeight: canvasH, onApply: handleResizeToFormats })} />
-          <TopButton icon={<Frame size={17} strokeWidth={2} />} label="mockups" onClick={() => emitModal({ type: "mockup", template: effectiveTemplate, background, layers, image, width: canvasW, height: canvasH, selectedLayer, onAddPage: handleAddMockupPage })} />
+          <TopButton icon={<ChevronLeft size={18} strokeWidth={2} />} label="Back" onClick={handleExit} />
+          <TopButton icon={<Layers size={17} strokeWidth={2} />} label="Layers" onClick={() => { setSheetOpen(false); setAddOpen(false); setLayersOpen((v) => !v); }} />
+          <TopButton icon={<Scaling size={17} strokeWidth={2} />} label="Resize" onClick={() => emitModal({ type: "resize", sourceWidth: canvasW, sourceHeight: canvasH, onApply: handleResizeToFormats })} />
+          <TopButton icon={<Frame size={17} strokeWidth={2} />} label="Mockups" onClick={() => emitModal({ type: "mockup", template: effectiveTemplate, background, layers, image, width: canvasW, height: canvasH, selectedLayer, onAddPage: handleAddMockupPage })} />
         </div>
         <div className="flex-1 flex justify-center min-w-0 px-1">
           <SaveStatus />
         </div>
         <div className="flex items-center gap-1">
-          <TopButton icon={<Undo2 size={17} strokeWidth={2} />} label="undo" onClick={undo} disabled={past.length === 0} />
-          <TopButton icon={<Redo2 size={17} strokeWidth={2} />} label="redo" onClick={redo} disabled={future.length === 0} />
+          <TopButton icon={<Undo2 size={17} strokeWidth={2} />} label="Undo" onClick={() => { undo(); trackEvent("studio", "undo_used", { details: { source: "mobile" } }); }} disabled={past.length === 0} />
+          <TopButton icon={<Redo2 size={17} strokeWidth={2} />} label="Redo" onClick={() => { redo(); trackEvent("studio", "redo_used", { details: { source: "mobile" } }); }} disabled={future.length === 0} />
           <button
-            ref={exportRef}
             onClick={openExport}
-            className="ml-1 flex items-center gap-1.5 px-3.5 h-9 rounded-lg bg-[var(--s-accent)] text-white text-[12px] font-medium"
+            className="ml-1 flex items-center gap-1.5 px-3.5 h-9 rounded-lg bg-[var(--s-accent)] text-[var(--s-accent-text)] text-[12px] font-medium"
           >
             <Download size={14} strokeWidth={2.5} />
-            export
+            Export
           </button>
         </div>
       </header>
@@ -185,7 +185,7 @@ export const MobileStudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => 
               <Action icon={<SlidersHorizontal size={18} strokeWidth={2} />} label="edit" active={sheetOpen} onClick={() => { setAddOpen(false); setSheetOpen((v) => !v); }} />
               <Action icon={<Copy size={18} strokeWidth={2} />} label="duplicate" onClick={() => selectedId && handleDuplicate([selectedId])} />
               <Action icon={<ArrowUp size={18} strokeWidth={2} />} label="forward" onClick={() => selectedId && handleMoveLayerUp(selectedId)} />
-              <Action icon={<ArrowDown size={18} strokeWidth={2} />} label="back" onClick={() => selectedId && handleMoveLayerDown(selectedId)} />
+              <Action icon={<ArrowDown size={18} strokeWidth={2} />} label="Back" onClick={() => selectedId && handleMoveLayerDown(selectedId)} />
             </>
           )}
         </div>

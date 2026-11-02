@@ -1,81 +1,63 @@
 import type { AsciiTone, ImagePlugin, TransformContext, TransformationResult } from '../types';
+import { measureLevels, stretchInPlace } from '../tone/auto-levels';
+import { writeLiftedColour } from '../tone/lift-colour';
+import { sampleCells, type CellSamples } from './ascii/cell-sampler';
+import { edgeGlyphAt } from './ascii/edge-glyph';
 
-// Luminance-ordered ramps, sparse (dark) -> dense (bright).
 export const ASCII_STANDARD = ' .:-=+*#%@';
 export const ASCII_BLOCKS = ' ░▒▓█';
 export const ASCII_DETAILED = " .,:;i!lI><~+_-?)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 export const ASCII_CODE = " .,:;-+=iltfjrxnuvcz235789XYUJCLQ0OZkbdpqhao#MW&8%B@$";
 
-const DEFAULT_RAMP = ASCII_DETAILED;
-
-// On a light surface, dark pixels become the densest ink, so the ramp flips.
 export const orientRamp = (ramp: string, tone: AsciiTone): string =>
   tone === "light" ? [...ramp].reverse().join("") : ramp;
 
-// Rendering geometry. ASCII uses a fixed legible column target (scaled by detail)
-// instead of the source resolution, so glyphs stay readable on any image size.
 export const ASCII_CELL_W = 8;
 export const ASCII_CELL_H = 14;
 export const ASCII_TARGET_COLS = 160;
+export const ASCII_SAMPLES_X = 3;
+export const ASCII_SAMPLES_Y = 5;
+
+const DEFAULT_RAMP = ASCII_DETAILED;
+const LEVELS_CLIP = 0.005;
+const LEVELS_AMOUNT = 0.8;
+const COLOUR_LIFT = 0.75;
+const DEFAULT_EDGE_SENSITIVITY = 0.5;
+
+const colourCells = (samples: CellSamples, cellCount: number): Uint8ClampedArray => {
+  const colorData = new Uint8ClampedArray(cellCount * 4);
+  const { colours } = samples;
+  for (let cell = 0; cell < cellCount; cell++) {
+    writeLiftedColour(colorData, cell * 4, colours[cell * 3], colours[cell * 3 + 1], colours[cell * 3 + 2], COLOUR_LIFT);
+  }
+  return colorData;
+};
 
 export const AsciiPlugin: ImagePlugin = {
   id: 'ascii',
   name: 'ASCII Art',
   category: 'Textures',
   transform: (ctx: TransformContext): TransformationResult => {
-    const { data, width, height, contrast, isColor, asciiCharset, asciiEdges, asciiEdgeThreshold } = ctx;
-    const chars = asciiCharset && asciiCharset.length > 1 ? asciiCharset : DEFAULT_RAMP;
-    const lastIdx = chars.length - 1;
-    const colorData = isColor ? new Uint8ClampedArray(width * height * 4) : undefined;
-    const lum = new Float32Array(width * height);
+    const chars = ctx.asciiCharset && ctx.asciiCharset.length > 1 ? ctx.asciiCharset : DEFAULT_RAMP;
+    const lastIndex = chars.length - 1;
+    const cols = ctx.asciiGridCols ?? ctx.width;
+    const rows = ctx.asciiGridRows ?? ctx.height;
+    const samples = sampleCells(ctx.data, { width: ctx.width, height: ctx.height, cols, rows });
+    stretchInPlace(samples.levels, measureLevels(samples.levels, LEVELS_CLIP), LEVELS_AMOUNT);
+    const sensitivity = ctx.asciiEdgeThreshold ?? DEFAULT_EDGE_SENSITIVITY;
+    const charData: string[] = new Array(cols * rows);
+    const lines: string[] = [];
 
-    // First pass: contrast-adjusted luminance grid (+ per-cell color when enabled).
-    for (let p = 0; p < width * height; p++) {
-      const i = p * 4;
-      let r = data[i], g = data[i + 1], b = data[i + 2];
-      r = ((r / 255 - 0.5) * contrast + 0.5) * 255;
-      g = ((g / 255 - 0.5) * contrast + 0.5) * 255;
-      b = ((b / 255 - 0.5) * contrast + 0.5) * 255;
-      lum[p] = Math.max(0, Math.min(255, r * 0.2126 + g * 0.7152 + b * 0.0722));
-      if (isColor && colorData) {
-        colorData[i] = Math.floor(Math.min(255, Math.max(0, r)));
-        colorData[i + 1] = Math.floor(Math.min(255, Math.max(0, g)));
-        colorData[i + 2] = Math.floor(Math.min(255, Math.max(0, b)));
-        colorData[i + 3] = 255;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const cell = row * cols + col;
+        const edge = ctx.asciiEdges ? edgeGlyphAt(samples.levels, cols, rows, col, row, sensitivity) : null;
+        charData[cell] = edge ?? chars[Math.round(samples.levels[cell] * lastIndex)];
       }
+      lines.push(charData.slice(row * cols, (row + 1) * cols).join(''));
     }
 
-    // Second pass: density chars, overridden by a directional glyph at strong edges.
-    const edgesOn = asciiEdges === true;
-    const threshold = (1 - (asciiEdgeThreshold ?? 0.5)) * 90 + 6;
-    const charData: string[] = [];
-    let text = '';
-
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const p = y * width + x;
-        let char = chars[Math.floor((lum[p] / 255) * lastIdx)];
-
-        if (edgesOn && x > 0 && x < width - 1 && y > 0 && y < height - 1) {
-          const tl = lum[p - width - 1], t = lum[p - width], tr = lum[p - width + 1];
-          const l = lum[p - 1], rg = lum[p + 1];
-          const bl = lum[p + width - 1], bt = lum[p + width], br = lum[p + width + 1];
-          const gx = (tr + 2 * rg + br) - (tl + 2 * l + bl);
-          const gy = (bl + 2 * bt + br) - (tl + 2 * t + tr);
-          if (gx * gx + gy * gy > threshold * threshold) {
-            let angle = Math.atan2(gy, gx);
-            if (angle < 0) angle += Math.PI;
-            const deg = (angle * 180) / Math.PI;
-            char = deg < 22.5 || deg >= 157.5 ? '|' : deg < 67.5 ? '/' : deg < 112.5 ? '-' : '\\';
-          }
-        }
-
-        charData.push(char);
-        text += char;
-      }
-      text += '\n';
-    }
-
-    return { text, charData, colorData };
+    const colorData = ctx.isColor ? colourCells(samples, cols * rows) : undefined;
+    return { text: lines.join('\n') + '\n', charData, colorData, gridWidth: cols, gridHeight: rows };
   }
 };

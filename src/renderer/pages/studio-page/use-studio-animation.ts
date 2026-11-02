@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useUser } from "../../hooks/useUser";
+import { resolveExportPlan } from "../../lib/plan-gate/resolve-export-plan";
+import { trackEvent } from "../../lib/tracker";
 import type { Layer, TemplateDef, TemplatePage } from "../../data/studioTypes";
 import type { EasingId, LayerAnimState, PageAnimation } from "../../data/animation-types";
 import { ANIMATABLE_KEYS, DEFAULT_FRAME_DURATION_MS } from "../../data/animation-types";
@@ -44,6 +45,8 @@ import {
   setPlaying,
   resetAnimationEditor,
 } from "../../store/animation-editor-store";
+
+const PLAN_UNKNOWN_MESSAGE = "We couldn't check your plan. Please try the export again in a moment.";
 
 type LayersUpdater = Layer[] | ((prev: Layer[]) => Layer[]);
 
@@ -112,14 +115,11 @@ export const useStudioAnimation = ({
 
   const animation = activePage?.animation;
 
-  const { credits } = useUser();
-  const planRef = useRef(credits.plan);
 
   const exportSourceRef = useRef({ activePage, layers, animation, template });
 
   useEffect(() => {
     exportSourceRef.current = { activePage, layers, animation, template };
-    planRef.current = credits.plan;
   });
 
   const frames = useMemo(() => animation?.frames ?? [], [animation]);
@@ -211,6 +211,7 @@ export const useStudioAnimation = ({
   }, [animation, activePageId, updatePage, pushHistory]);
 
   const toggleMode = useCallback(() => {
+    trackEvent("studio", "animation_mode_toggled", { details: { enabled: !mode } });
     if (mode) {
       setPlaying(false);
       setAnimationMode(false);
@@ -230,6 +231,7 @@ export const useStudioAnimation = ({
     const frameId = makeFrameId();
     pushHistory();
     updatePage(activePageId, (page) => addFrame(page, frameId));
+    trackEvent("studio", "animation_keyframe_added", { details: { frame_count: animation.frames.length + 1 } });
     setActiveFrameId(frameId);
     setPlaying(false);
     setPlayheadMs((starts[starts.length - 1] ?? 0) + DEFAULT_FRAME_DURATION_MS);
@@ -240,6 +242,7 @@ export const useStudioAnimation = ({
       if (!animation || animation.frames.length <= 1) return;
       pushHistory();
       updatePage(activePageId, (page) => deleteFrame(page, frameId));
+      trackEvent("studio", "animation_keyframe_deleted");
       if (activeFrameId === frameId) setActiveFrameId(animation.frames[0].id);
     },
     [animation, activeFrameId, activePageId, updatePage, pushHistory],
@@ -267,6 +270,7 @@ export const useStudioAnimation = ({
     (loop: boolean) => {
       pushHistory();
       updatePage(activePageId, (page) => setAnimationLoop(page, loop));
+      trackEvent("studio", "animation_loop_toggled", { details: { loop } });
     },
     [activePageId, updatePage, pushHistory],
   );
@@ -279,6 +283,7 @@ export const useStudioAnimation = ({
   );
 
   const togglePlay = useCallback(() => {
+    if (!playing) trackEvent("studio", "animation_played");
     setPlaying(!playing);
   }, [playing]);
 
@@ -294,10 +299,13 @@ export const useStudioAnimation = ({
     if (!source.animation || !source.activePage) return;
     const { activePage: page, layers: pageLayers, animation: pageAnimation, template: pageTemplate } = source;
     setPlaying(false);
+    trackEvent("studio", "animation_exported", { details: { format, frame_count: pageAnimation.frames.length } });
     setAnimationExporting(true);
     setAnimationExportProgress(0);
     setAnimationExportError(null);
-    void exportPageAnimation({
+    void resolveExportPlan().then((plan) => (plan === null
+      ? Promise.reject(new Error(PLAN_UNKNOWN_MESSAGE))
+      : exportPageAnimation({
       template: pageTemplate,
       background: page.background,
       baseLayers: pageLayers,
@@ -308,9 +316,9 @@ export const useStudioAnimation = ({
       format,
       scale: getExportScale(),
       quality: getExportQuality(),
-      plan: planRef.current,
+      plan,
       onProgress: setAnimationExportProgress,
-    })
+    })))
       .then(({ blob, extension }) => {
         downloadBlob(blob, `${page.name || "animation"}.${extension}`);
       })

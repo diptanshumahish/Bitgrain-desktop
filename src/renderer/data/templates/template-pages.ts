@@ -10,6 +10,11 @@ const PAGE_GAP = 80;
 
 export const makePageId = (index: number): string => `page-${index}`;
 
+const makeUniquePageId = (): string => `page-${crypto.randomUUID()}`;
+
+export const nextPageX = (pages: TemplatePage[]): number =>
+  pages.length === 0 ? 0 : Math.max(...pages.map((page) => page.x + page.width)) + PAGE_GAP;
+
 const fillEmptyImageSlots = (
   layers: Layer[],
   defaultImage: string | null,
@@ -43,7 +48,7 @@ const reassignLayerIds = (layers: Layer[]): Layer[] =>
 const cloneLayers = (layers: Layer[]): Layer[] =>
   layers.map((layer) => structuredClone(layer));
 
-const cloneLayersWithFreshIds = (layers: Layer[]): Layer[] =>
+export const cloneLayersWithFreshIds = (layers: Layer[]): Layer[] =>
   reassignLayerIds(cloneLayers(layers));
 
 export const clonePage = (page: TemplatePage): TemplatePage => ({
@@ -60,7 +65,7 @@ export const makeBlankPage = (
   x: number,
   y: number,
 ): TemplatePage => ({
-  id: makePageId(pageNumber),
+  id: makeUniquePageId(),
   name: `Page ${pageNumber}`,
   layers: [],
   background,
@@ -71,14 +76,11 @@ export const makeBlankPage = (
   image: null,
 });
 
-export const duplicatePage = (
-  source: TemplatePage,
-  newPageNumber: number,
-): TemplatePage => ({
+export const duplicatePage = (source: TemplatePage, x: number): TemplatePage => ({
   ...clonePage(source),
-  id: makePageId(newPageNumber),
+  id: makeUniquePageId(),
   name: `${source.name} copy`,
-  x: source.x + source.width + PAGE_GAP,
+  x,
 });
 
 const pageFromInput = (

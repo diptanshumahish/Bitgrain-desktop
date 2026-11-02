@@ -38,7 +38,7 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
         width={width}
         height={height}
         fill="none"
-        stroke="var(--s-accent)"
+        stroke="var(--s-canvas-selection)"
         strokeWidth={1 / zoom}
       />
       {corners.map(([cornerX, cornerY], index) => {
@@ -52,7 +52,7 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
             height={size}
             rx={1 / zoom}
             fill="white"
-            stroke="var(--s-accent)"
+            stroke="var(--s-canvas-selection)"
             strokeWidth={HANDLE_STROKE_PX / zoom}
           />
         );
@@ -63,7 +63,7 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
           cy={-ROTATE_OFFSET_PX / zoom}
           r={ROTATE_R_PX / zoom}
           fill="white"
-          stroke="var(--s-accent)"
+          stroke="var(--s-canvas-selection)"
           strokeWidth={HANDLE_STROKE_PX / zoom}
         />
       )}

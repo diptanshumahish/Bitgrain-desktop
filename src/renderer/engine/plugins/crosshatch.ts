@@ -3,6 +3,9 @@ import type {
   TransformContext,
   TransformationResult,
 } from "../types";
+import { inkForPaper } from "../tone/paper";
+import { toLuminance } from "./ink-common";
+import { measureLevels, stretchInPlace } from "../tone/auto-levels";
 
 const LAYER_ANGLES_RAD = [
   Math.PI / 4,
@@ -10,11 +13,12 @@ const LAYER_ANGLES_RAD = [
   Math.PI / 2 + Math.PI / 8,
   -Math.PI / 8,
 ];
+const DEFAULT_INK: [number, number, number] = [25, 22, 20];
+const DEFAULT_PAPER: [number, number, number] = [245, 240, 228];
+const HALF = 0.5;
+const STROKE_SWELL = 0.2;
+const LEVELS_CLIP = 0.01;
 const LAYER_DARKNESS_GATE = [0.30, 0.50, 0.70, 0.85];
-
-function luminance(r: number, g: number, b: number): number {
-  return (r * 0.2126 + g * 0.7152 + b * 0.0722) / 255;
-}
 
 export const CrosshatchPlugin: ImagePlugin = {
   id: "crosshatch",
@@ -25,10 +29,12 @@ export const CrosshatchPlugin: ImagePlugin = {
     const { data, width, height } = ctx;
     const spacing = Math.max(3, Math.round(ctx.crosshatchSpacing ?? 7));
     const baseThickness = Math.max(1, ctx.crosshatchThickness ?? 1.4);
-    const inkColor = ctx.crosshatchInk ?? [25, 22, 20];
-    const paperColor = ctx.crosshatchPaper ?? [245, 240, 228];
+    const paperColor = ctx.crosshatchPaper ?? ctx.paperColor ?? DEFAULT_PAPER;
+    const inkColor = ctx.crosshatchInk ?? (ctx.paperColor ? inkForPaper(ctx.paperColor) : DEFAULT_INK);
 
     const out = new Uint8ClampedArray(width * height * 4);
+    const tone = toLuminance(data, width, height);
+    stretchInPlace(tone, measureLevels(tone, LEVELS_CLIP), 1);
 
     const cosByLayer = LAYER_ANGLES_RAD.map(Math.cos);
     const sinByLayer = LAYER_ANGLES_RAD.map(Math.sin);
@@ -36,8 +42,7 @@ export const CrosshatchPlugin: ImagePlugin = {
     for (let py = 0; py < height; py++) {
       for (let px = 0; px < width; px++) {
         const idx = (py * width + px) * 4;
-        const luma = luminance(data[idx], data[idx + 1], data[idx + 2]);
-        const darkness = 1 - luma;
+        const darkness = 1 - tone[py * width + px];
 
         let inkAlpha = 0;
         for (let layer = 0; layer < LAYER_ANGLES_RAD.length; layer++) {
@@ -50,11 +55,9 @@ export const CrosshatchPlugin: ImagePlugin = {
           const projected = px * cosByLayer[layer] + py * sinByLayer[layer];
           const mod = ((projected % spacing) + spacing) % spacing;
           const dist = Math.min(mod, spacing - mod);
-          const halfThickness = baseThickness * (0.5 + 0.5 * layerStrength);
-          if (dist < halfThickness) {
-            const aa = Math.min(1, halfThickness - dist);
-            inkAlpha = Math.max(inkAlpha, aa * (0.5 + 0.5 * layerStrength));
-          }
+          const halfThickness = baseThickness * HALF + layerStrength * spacing * STROKE_SWELL;
+          const aa = Math.min(1, Math.max(0, halfThickness - dist + HALF));
+          inkAlpha = Math.max(inkAlpha, aa);
         }
 
         const r = paperColor[0] + (inkColor[0] - paperColor[0]) * inkAlpha;

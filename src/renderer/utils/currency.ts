@@ -2,11 +2,14 @@ export type Currency =
   | "INR" | "USD" | "EUR" | "GBP" | "AUD" | "CAD"
   | "SGD" | "AED" | "MYR" | "BRL" | "MXN" | "PHP";
 
-export type Bundle = "pro-license-10yr";
+export type Bundle = "pro-license-10yr" | "pro-monthly";
 
 export const LICENSE_BUNDLE: Bundle = "pro-license-10yr";
+export const MONTHLY_BUNDLE: Bundle = "pro-monthly";
 
 export const LICENSE_TERM_YEARS = 10;
+
+export type BillingCycle = "lifetime" | "monthly";
 
 export interface CurrencyMeta {
   code: Currency;
@@ -36,6 +39,10 @@ export const BUNDLE_PRICES: Record<Bundle, Record<Currency, number>> = {
   "pro-license-10yr": {
     INR: 299900, USD: 6900, EUR: 6400, GBP: 5500, AUD: 10500, CAD: 9500,
     SGD: 9300,   AED: 25300, MYR: 30900, BRL: 34900, MXN: 122900, PHP: 389900,
+  },
+  "pro-monthly": {
+    INR: 29900, USD: 699, EUR: 649, GBP: 549, AUD: 1049, CAD: 949,
+    SGD: 929,   AED: 2529, MYR: 3089, BRL: 3489, MXN: 12289, PHP: 38989,
   },
 };
 

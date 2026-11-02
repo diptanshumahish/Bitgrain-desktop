@@ -1,12 +1,14 @@
 import type { ImagePlugin, TransformContext, TransformationResult } from "../types";
 import { toLuminance, smoothTone, xdog, valueNoise, writeResult } from "./ink-common";
+import { tintGreyOnPaper } from "../tone/paper";
+import { MANGA_DEFAULTS } from "./manga-defaults";
 
 const TONE_SIGMA = 1.6;
 const LINE_SIGMA = 1.0;
 const MIN_PHI = 8;
 const MAX_PHI = 40;
 const DEG_TO_RAD = Math.PI / 180;
-const BASE_THICKNESS = 1.1;
+const BASE_THICKNESS = 0.75;
 const STROKE_GAP_CUTOFF = 0.08;
 const LAYER_RAMP = 0.2;
 const WOBBLE_FINE_FREQ = 0.09;
@@ -17,16 +19,15 @@ const PRESSURE_FREQ = 0.3;
 const PRESSURE_MIN = 0.5;
 const PRESSURE_RANGE = 0.95;
 const LAYER_SEED = 97;
+const MIN_SPACING = 2;
+const BLACK_THRESHOLD_LOW = 0.04;
+const BLACK_THRESHOLD_HIGH = 0.16;
 
-// Layered crosshatch: each layer adds a set of parallel strokes at a fixed
-// offset from the base angle, fading in once the pixel is dark enough. Darker
-// tones accumulate more layers, and crossing layers multiply into denser ink,
-// so midtones read as real hatching rather than bare paper.
 const HATCH_LAYERS = [
-  { offset: 0, gate: 0.10 },
-  { offset: Math.PI / 2, gate: 0.26 },
-  { offset: Math.PI / 4, gate: 0.44 },
-  { offset: -Math.PI / 4, gate: 0.62 },
+  { offset: 0, gate: 0.2 },
+  { offset: Math.PI / 2, gate: 0.4 },
+  { offset: Math.PI / 4, gate: 0.58 },
+  { offset: -Math.PI / 4, gate: 0.74 },
 ];
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
@@ -38,13 +39,13 @@ export const MangaPlugin: ImagePlugin = {
 
   transform: (ctx: TransformContext): TransformationResult => {
     const { data, width, height } = ctx;
-    const spacing = Math.max(2, ctx.mangaCell ?? 2);
-    const baseAngle = (ctx.mangaAngle ?? 45) * DEG_TO_RAD;
-    const lineWeight = Math.min(1, Math.max(0, ctx.mangaLineWeight ?? 0.6));
-    const contrast = Math.min(1, Math.max(0, ctx.mangaContrast ?? 0.5));
+    const spacing = Math.max(MIN_SPACING, ctx.mangaCell ?? MANGA_DEFAULTS.cell);
+    const baseAngle = (ctx.mangaAngle ?? MANGA_DEFAULTS.angle) * DEG_TO_RAD;
+    const lineWeight = Math.min(1, Math.max(0, ctx.mangaLineWeight ?? MANGA_DEFAULTS.lineWeight));
+    const contrast = Math.min(1, Math.max(0, ctx.mangaContrast ?? MANGA_DEFAULTS.contrast));
 
     const phi = MIN_PHI + (MAX_PHI - MIN_PHI) * lineWeight;
-    const blackThreshold = lerp(0.06, 0.2, contrast);
+    const blackThreshold = lerp(BLACK_THRESHOLD_LOW, BLACK_THRESHOLD_HIGH, contrast);
     const gateScale = lerp(1.2, 0.65, contrast);
 
     const gray = toLuminance(data, width, height);
@@ -103,6 +104,7 @@ export const MangaPlugin: ImagePlugin = {
       }
     }
 
+    if (ctx.paperColor) tintGreyOnPaper(out, ctx.paperColor);
     return writeResult(out);
   },
 };

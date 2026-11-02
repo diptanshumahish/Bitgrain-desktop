@@ -1,6 +1,7 @@
 import React from "react";
 import { ArrowDown, ArrowRight, Grid, Shrink, Type, Ungroup, WrapText } from "lucide-react";
-import type { GroupLayer, AlignItems, JustifyContent, LayoutMode } from "../../../data/studioTypes";
+import type { GroupLayer, AlignItems, JustifyContent, Layer, LayoutMode } from "../../../data/studioTypes";
+import { GroupColoursSection } from "../../../modules/elements/recolour/group-colours-section";
 import { fitGroupSize } from "../../../utils/auto-layout";
 import { PanelGroup } from "../ui/panel-group";
 import { PositionSizeFields } from "../ui/position-size-fields";
@@ -12,6 +13,8 @@ interface GroupPropertiesProps {
   onChange: (updates: Partial<GroupLayer>) => void;
   onAlign?: (alignment: string) => void;
   onUngroup?: () => void;
+  pageLayers?: Layer[];
+  pageBackground?: string;
 }
 
 const LAYOUTS: { value: LayoutMode; icon: React.ReactNode; label: string }[] = [
@@ -63,6 +66,8 @@ export const GroupProperties: React.FC<GroupPropertiesProps> = ({
   onChange,
   onAlign,
   onUngroup,
+  pageLayers = [],
+  pageBackground = "",
 }) => {
   const hasLayout = layer.layout !== "none";
   const isFlex = layer.layout === "flex-row" || layer.layout === "flex-col";
@@ -175,6 +180,8 @@ export const GroupProperties: React.FC<GroupPropertiesProps> = ({
           </div>
         )}
       </PanelGroup>
+
+      <GroupColoursSection layer={layer} pageLayers={pageLayers} pageBackground={pageBackground} onChange={onChange} />
 
       {onUngroup && (
         <div className="px-4 py-3">

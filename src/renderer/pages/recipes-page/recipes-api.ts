@@ -1,5 +1,5 @@
 import { callApi } from "../../lib/api-client";
-import type { ShareableState } from "../../utils/preset-url";
+import type { RecipeBody } from "./recipe-path";
 
 export type RecipeSort = "recent" | "trending";
 
@@ -7,10 +7,12 @@ export interface Recipe {
   id: string;
   name: string;
   authorName: string | null;
-  recipe: ShareableState;
+  recipe: RecipeBody;
   thumbnail: string | null;
   useCount: number;
   createdAt: string;
+  parentId: string | null;
+  parentName: string | null;
 }
 
 interface RecipeListResponse {
@@ -23,12 +25,16 @@ interface RecipeListResponse {
 export interface PublishRecipeInput {
   name: string;
   authorName?: string;
-  recipe: ShareableState;
+  recipe: RecipeBody;
   thumbnail?: string;
+  parentId?: string;
 }
 
 export const fetchRecipes = (sort: RecipeSort, limit: number, offset: number) =>
   callApi<RecipeListResponse>(`/api/recipes?sort=${sort}&limit=${limit}&offset=${offset}`);
+
+export const fetchRecipe = (id: string): Promise<Recipe | null> =>
+  callApi<Recipe>(`/api/recipes/${encodeURIComponent(id)}`);
 
 export const publishRecipe = (input: PublishRecipeInput) =>
   callApi<{ id: string }>("/api/recipes", {

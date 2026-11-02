@@ -3,8 +3,9 @@ import { OutputPreview } from "../../OutputPreview";
 import { LUTS } from "../../../engine/luts";
 import { X } from "lucide-react";
 import { Popover } from "../Popover";
+import { useSignalValue } from "../../../lib/signal";
+import { previewThumbSignal } from "../../../store/preview-thumb-store";
 
-const PREVIEW_IMAGE = "/sample.jpg";
 
 interface LUTCardProps {
   lutId: string;
@@ -72,11 +73,11 @@ const LUTCard: React.FC<LUTCardProps> = ({
       </div>
       <div className="px-2 py-1.5 flex items-center justify-between gap-1 border-t border-[var(--s-border)]">
         <span
-          className={`text-[10px] font-semibold transition-colors truncate leading-none ${active ? "text-[var(--s-accent)]" : "text-[var(--s-text)] group-hover:text-[var(--s-accent)]"}`}
+          className={`text-[12px] font-semibold transition-colors truncate leading-none ${active ? "text-[var(--s-accent)]" : "text-[var(--s-text)] group-hover:text-[var(--s-accent)]"}`}
         >
           {name}
         </span>
-        <span className="text-[9px]   text-[var(--s-text-subtle)] shrink-0 leading-none">
+        <span className="text-[12px]   text-[var(--s-text-subtle)] shrink-0 leading-none">
           {tag}
         </span>
       </div>
@@ -97,6 +98,7 @@ export const LUTPopover: React.FC<LUTPopoverProps> = ({
   onClose,
   static: isStatic,
 }) => {
+  const thumb = useSignalValue(previewThumbSignal);
   return (
     <Popover
       onClose={onClose}
@@ -107,11 +109,9 @@ export const LUTPopover: React.FC<LUTPopoverProps> = ({
         <div className="p-3 pb-2">
           <div className="flex items-center justify-between mb-2">
             <div>
-              <p className="text-[10px] font-semibold text-[var(--s-text-subtle)]     ">
-                Cinematic Color Grades
-              </p>
-              <p className="text-[9px] text-[var(--s-text-subtle)] opacity-60 mt-0.5 italic">
-                Included on every plan. Free exports carry a small watermark
+              <p className="text-[12px] font-semibold text-[var(--s-text)]">Film grade</p>
+              <p className="text-[12px] text-[var(--s-text-subtle)] mt-0.5">
+                Colour looks from classic film stocks. Free exports carry a small watermark.
               </p>
             </div>
             {activeLutId && (
@@ -120,20 +120,20 @@ export const LUTPopover: React.FC<LUTPopoverProps> = ({
                   onSelectLUT(null);
                   onClose();
                 }}
-                className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-500 transition-colors px-2 py-1 rounded-md hover:bg-red-400/10"
+                className="flex items-center gap-1 text-[12px] text-red-500 hover:text-red-600 transition-colors px-2 py-1 rounded-md hover:bg-red-400/10"
               >
-                <X size={10} strokeWidth={2} /> Remove grade
+                <X size={11} strokeWidth={2} /> Remove grade
               </button>
             )}
           </div>
           <div className="grid grid-cols-4 gap-2">
             {LUTS.map((lut) => (
               <LUTCard
-                key={lut.id}
+                key={`${lut.id}-${thumb.id}`}
                 lutId={lut.id}
                 name={lut.name}
                 tag={lut.tag}
-                image={PREVIEW_IMAGE}
+                image={thumb.src}
                 active={activeLutId === lut.id}
                 onApply={() => {
                   onSelectLUT(lut.id);

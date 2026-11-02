@@ -70,6 +70,14 @@ export const PatternModal: React.FC<PatternModalProps> = ({
               Generate a pattern in one click, fine-tune it anytime from the Pattern panel
             </p>
           </div>
+          <a
+            href="/docs/05-studio-advanced/02-patterns-and-auto-layout"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 text-[11px] text-[var(--s-text-muted)] hover:text-[var(--s-text)] underline underline-offset-2 transition-colors"
+          >
+            Guide
+          </a>
         </div>
 
         <div className="flex">

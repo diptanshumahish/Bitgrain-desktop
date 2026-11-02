@@ -20,7 +20,9 @@ const PRODUCTION_CSP = [
   "script-src 'self' app: 'wasm-unsafe-eval'",
   "style-src 'self' app: 'unsafe-inline'",
   `img-src 'self' app: data: blob: ${API_ORIGIN}`,
-  "font-src 'self' app: data:",
+  // Admin-uploaded template fonts are served by our own API (lib/admin-fonts.ts);
+  // no third-party font CDN is allowed.
+  `font-src 'self' app: data: ${API_ORIGIN}`,
   `connect-src 'self' app: blob: data: ${API_ORIGIN} http://127.0.0.1:*`,
   "worker-src 'self' app: blob:",
   "object-src 'none'",

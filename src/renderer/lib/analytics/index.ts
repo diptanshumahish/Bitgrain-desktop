@@ -1,7 +1,7 @@
 import type { AnalyticsClient, EventName } from "./analytics-types";
 import { createDeferredClient } from "./deferred-client";
 import { loadPostHogClient } from "./posthog-provider";
-import { trackEvent as trackToDatabase } from "../tracker";
+import { recordToDatabase } from "../tracker/database-sink";
 
 export type { EventName } from "./analytics-types";
 
@@ -20,7 +20,7 @@ const analytics = createDeferredClient(loadActiveClient);
 
 const mirrorToDatabase = (name: EventName, properties?: Record<string, unknown>): void => {
   if (typeof window === "undefined") return;
-  void trackToDatabase("app", name, { details: properties ?? {} });
+  void recordToDatabase(`app:${name}`, properties ?? {}, false);
 };
 
 export const trackEvent = (name: EventName, properties?: Record<string, unknown>): void => {

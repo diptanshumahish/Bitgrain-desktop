@@ -6,16 +6,28 @@ import { isMobileNow } from "../../hooks/useIsMobile";
 import { ensureAdminFontsLoaded } from "../../lib/admin-fonts";
 import { dirtySignal, markClean } from "../../store/studio-save-status";
 import { loadTemplates } from "../../store/templates-store";
-import { fetchPlugins } from "../../studio-plugins/host/api";
-import {
-  pluginsSignal,
-  pluginsLoadedSignal,
-} from "../../studio-plugins/host/plugin-bus";
+import { ensurePluginsLoaded } from "../../studio-plugins/host/load-plugins";
 import { authBypassSignal } from "../../hooks/useAuth";
 import type { TemplateDef } from "../../data/studioTypes";
 
 const TUTORIAL_DELAY_MS = 800;
 const TUTORIAL_KEY = "imgi_tutorial_studio_done";
+
+const hasSeenStudioTour = (): boolean => {
+  try {
+    return localStorage.getItem(TUTORIAL_KEY) !== null;
+  } catch {
+    return true;
+  }
+};
+
+const rememberStudioTourSeen = (): void => {
+  try {
+    localStorage.setItem(TUTORIAL_KEY, "true");
+  } catch {
+    trackEvent("studio", "tour_storage_unavailable");
+  }
+};
 
 interface UseStudioInitArgs {
   initial: TemplateDef;
@@ -42,12 +54,7 @@ export const useStudioInit = ({ initial }: UseStudioInitArgs): void => {
   useEffect(() => {
     if (authBypassSignal.value) return;
     void loadTemplates();
-    const controller = new AbortController();
-    void fetchPlugins(controller.signal).then((list) => {
-      pluginsSignal.value = list;
-      pluginsLoadedSignal.value = true;
-    });
-    return () => controller.abort();
+    void ensurePluginsLoaded();
   }, []);
 
   useEffect(() => {
@@ -62,14 +69,11 @@ export const useStudioInit = ({ initial }: UseStudioInitArgs): void => {
   }, []);
 
   useEffect(() => {
-    if (isMobileNow()) return;
-    const done = localStorage.getItem(TUTORIAL_KEY);
-    if (!done) {
-      const timer = setTimeout(
-        () => emitTutorial({ type: "start", tutorialId: "studio" }),
-        TUTORIAL_DELAY_MS,
-      );
-      return () => clearTimeout(timer);
-    }
+    if (isMobileNow() || hasSeenStudioTour()) return;
+    const timer = setTimeout(() => {
+      rememberStudioTourSeen();
+      emitTutorial({ type: "start", tutorialId: "studio" });
+    }, TUTORIAL_DELAY_MS);
+    return () => clearTimeout(timer);
   }, []);
 };

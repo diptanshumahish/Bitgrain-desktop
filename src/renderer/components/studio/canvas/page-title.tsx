@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { trackEvent } from "../../../lib/tracker";
 
 const FONT_SIZE_PX = 12;
 const LINE_HEIGHT_PX = 16;
@@ -7,6 +8,7 @@ interface PageTitleProps {
   label: string;
   isActive: boolean;
   zoom: number;
+  pageWidth: number;
   onRename: (name: string) => void;
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void;
@@ -17,6 +19,7 @@ export const PageTitle: React.FC<PageTitleProps> = ({
   label,
   isActive,
   zoom,
+  pageWidth,
   onRename,
   onPointerDown,
   onPointerMove,
@@ -36,7 +39,9 @@ export const PageTitle: React.FC<PageTitleProps> = ({
   const commit = (value: string): void => {
     setEditing(false);
     const next = value.trim();
-    if (next && next !== label) onRename(next);
+    if (!next || next === label) return;
+    onRename(next);
+    trackEvent("studio", "page_renamed");
   };
 
   const sharedStyle: React.CSSProperties = {
@@ -46,6 +51,7 @@ export const PageTitle: React.FC<PageTitleProps> = ({
     lineHeight: `${LINE_HEIGHT_PX}px`,
     paddingBottom: "6px",
     paddingRight: "8px",
+    maxWidth: `${pageWidth * zoom}px`,
   };
 
   if (editing) {
@@ -69,7 +75,8 @@ export const PageTitle: React.FC<PageTitleProps> = ({
 
   return (
     <div
-      className="absolute left-0 bottom-full select-none cursor-pointer whitespace-nowrap"
+      className="absolute left-0 bottom-full select-none cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis"
+      title={label}
       style={{
         ...sharedStyle,
         fontWeight: isActive ? 600 : 400,

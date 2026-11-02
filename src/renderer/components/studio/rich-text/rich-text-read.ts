@@ -11,6 +11,10 @@ import {
   normalizeFamily,
   normalizeWeight,
 } from "./rich-text-types";
+import { elementDecoration, mergeDecoration, parseDecoration } from "./text-decoration";
+import { parseLetterSpacing } from "./letter-spacing";
+
+const SPACING_PRECISION = 10;
 
 export const layerBaseStyle = (layer: TextLayer): BaseTextStyle => ({
   color: layer.color,
@@ -18,6 +22,9 @@ export const layerBaseStyle = (layer: TextLayer): BaseTextStyle => ({
   fontWeight: layer.fontWeight,
   fontStyle: layer.fontStyle === "italic" ? "italic" : "normal",
   fontSize: layer.fontSize,
+  ...parseDecoration(layer.textDecoration),
+  textTransform: layer.textTransform,
+  letterSpacing: layer.letterSpacing,
 });
 
 const parseFontSize = (raw: string, baseSize: number): number => {
@@ -42,15 +49,28 @@ export const collectRangeTextNodes = (
   return nodes;
 };
 
+const fontSizeAt = (startEl: HTMLElement, editorEl: HTMLElement, baseSize: number): number => {
+  let el: HTMLElement | null = startEl;
+  while (el && el !== editorEl) {
+    if (el.style.fontSize) return parseFontSize(el.style.fontSize, baseSize);
+    el = el.parentElement;
+  }
+  return baseSize;
+};
+
 const readAncestorStyle = (
   startEl: HTMLElement | null,
   editorEl: HTMLElement,
   base: BaseTextStyle,
 ): RunStyle => {
   const run: RunStyle = { ...base };
-  const locked = { color: false, fontFamily: false, fontWeight: false, fontStyle: false, fontSize: false };
+  const locked = {
+    color: false, fontFamily: false, fontWeight: false, fontStyle: false, fontSize: false,
+    textTransform: false, letterSpacing: false,
+  };
   let el = startEl;
   while (el && el !== editorEl) {
+    Object.assign(run, mergeDecoration(run, elementDecoration(el)));
     const style = el.style;
     const tag = el.tagName;
     if (!locked.color && style.color) { run.color = style.color; locked.color = true; }
@@ -60,6 +80,11 @@ const readAncestorStyle = (
     if (!locked.fontStyle && style.fontStyle) { run.fontStyle = style.fontStyle; locked.fontStyle = true; }
     else if (!locked.fontStyle && (tag === "I" || tag === "EM")) { run.fontStyle = "italic"; locked.fontStyle = true; }
     if (!locked.fontSize && style.fontSize) { run.fontSize = parseFontSize(style.fontSize, base.fontSize); locked.fontSize = true; }
+    if (!locked.textTransform && style.textTransform) { run.textTransform = style.textTransform; locked.textTransform = true; }
+    if (!locked.letterSpacing && style.letterSpacing) {
+      run.letterSpacing = parseLetterSpacing(style.letterSpacing, fontSizeAt(el, editorEl, base.fontSize));
+      locked.letterSpacing = true;
+    }
     el = el.parentElement;
   }
   run.color = normalizeColor(run.color);
@@ -109,6 +134,10 @@ export const resolveRangeStyle = (
     fontWeight: aggregate(runs.map((run) => run.fontWeight)),
     fontSize: aggregate(runs.map((run) => Math.round(run.fontSize))),
     italic: aggregate(runs.map((run) => run.fontStyle === "italic")),
+    underline: aggregate(runs.map((run) => run.underline)),
+    strike: aggregate(runs.map((run) => run.strike)),
+    textTransform: aggregate(runs.map((run) => run.textTransform)),
+    letterSpacing: aggregate(runs.map((run) => Math.round(run.letterSpacing * SPACING_PRECISION) / SPACING_PRECISION)),
     collapsed: range.collapsed,
   };
 };

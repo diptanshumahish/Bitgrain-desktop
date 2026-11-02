@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { X, Download, Plus, Loader2, ArrowLeft } from "lucide-react";
+import { resolveExportPlan } from "../../../lib/plan-gate/resolve-export-plan";
+import { X, Download, Plus, Loader2, ArrowLeft, BookOpen } from "lucide-react";
 import { useSignalValue } from "../../../lib/signal";
 import { themeSignal } from "../../../store/global-theme-store";
 import { renderToCanvas } from "../../studio/hooks/export/render-canvas";
@@ -15,8 +16,8 @@ import { renderWholeDesign, renderLayerArtwork, canvasFromImage } from "./artwor
 import { rotateArtworkQuarterTurn, mirrorArtwork } from "./artwork-transform";
 import { detectSurfaceQuad } from "../../../engine/mockup/detect/detect-surface-quad";
 import { loadImage } from "../mockups-api";
-import { usePayment } from "../../../hooks/usePayment";
 import { gateCanvasForPlan } from "../../../lib/plan-gate/gate-canvas-for-plan";
+import { trackEvent } from "../../../lib/tracker";
 import type { ArtworkSourceKind, ArtworkRequest } from "./artwork-source";
 import type { MockupQuad, SmartObjectSettings } from "../../../engine/mockup/mockup-types";
 import type { TemplateDef, Layer } from "../../../data/studioTypes";
@@ -52,7 +53,6 @@ export const SmartObjectModal: React.FC<SmartObjectModalProps> = ({
   onClose,
 }) => {
   const dark = useSignalValue(themeSignal) === "dark";
-  const { credits } = usePayment();
   const [artwork, setArtwork] = useState<HTMLCanvasElement | null>(null);
   const [base, setBase] = useState<HTMLImageElement | null>(null);
   const [corners, setCorners] = useState<MockupQuad>(DEFAULT_CORNERS);
@@ -126,10 +126,13 @@ export const SmartObjectModal: React.FC<SmartObjectModalProps> = ({
   };
 
   const handleDownload = async (): Promise<void> => {
+    const plan = await resolveExportPlan();
+    if (!plan) return;
     const composed = compose();
     if (!composed) return;
-    const gated = await gateCanvasForPlan(composed, credits.plan);
+    const gated = await gateCanvasForPlan(composed, plan);
     download(gated.toDataURL("image/png"), "bitgrain-mockup.png");
+    trackEvent("studio", "mockup_downloaded", { details: { plan: plan } });
   };
 
   const supported = isSmartObjectSupported();
@@ -157,9 +160,19 @@ export const SmartObjectModal: React.FC<SmartObjectModalProps> = ({
               </p>
             </div>
           </div>
-          <button onClick={onClose} className={`w-8 h-8 flex items-center justify-center rounded-lg ${dark ? "text-zinc-500 hover:bg-zinc-800" : "text-zinc-400 hover:bg-zinc-100"}`}>
-            <X size={16} strokeWidth={2} />
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="/docs/05-studio-advanced/05-mockups"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center gap-1.5 px-2 h-7 rounded-md text-[11px] font-medium no-underline transition-colors ${dark ? "text-zinc-500 hover:bg-zinc-800 hover:text-white" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"}`}
+            >
+              <BookOpen size={12} /> Guide
+            </a>
+            <button onClick={onClose} className={`w-8 h-8 flex items-center justify-center rounded-lg ${dark ? "text-zinc-500 hover:bg-zinc-800" : "text-zinc-400 hover:bg-zinc-100"}`}>
+              <X size={16} strokeWidth={2} />
+            </button>
+          </div>
         </div>
 
         {!supported && (

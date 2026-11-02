@@ -25,7 +25,7 @@ export const TextSelectionHighlight: React.FC = () => {
       {rects.map((rect, index) => (
         <div
           key={index}
-          className="absolute bg-blue-500/30 rounded-[1px]"
+          className="absolute bg-[var(--s-canvas-selection-fill)] rounded-[1px]"
           style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
         />
       ))}

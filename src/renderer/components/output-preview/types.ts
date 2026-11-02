@@ -1,3 +1,4 @@
+import type { HalftoneShape } from "../../engine/plugins/halftone/halftone-defaults";
 import type { TransformMode, DitherMethod, Palette, AsciiTone } from "../../engine/types";
 
 export interface WorkerResult {
@@ -11,6 +12,11 @@ export interface WorkerResult {
   charWidth: number;
   charHeight: number;
   isDither: boolean;
+  baseData?: Uint8ClampedArray | null;
+  effectAlpha?: Uint8ClampedArray | null;
+  overlayAlpha?: Uint8ClampedArray | null;
+  baseCols?: number;
+  baseRows?: number;
 }
 
 export interface CompactCacheEntry {
@@ -44,6 +50,7 @@ export interface OutputPreviewProps {
   lutId?: string;
   fgColor: string;
   bgColor: string;
+  paperColor?: string | null;
   onResult?: (result: import("../../engine/types").TransformationResult) => void;
   onRender?: (dataUrl: string) => void;
   compareMode?: boolean;
@@ -54,12 +61,14 @@ export interface OutputPreviewProps {
   bloomThreshold?: number;
   hazeWarmth?: number;
   halftoneCell?: number;
+  halftoneLines?: number;
   halftoneAngle?: number;
   halftoneStyle?: 'mono' | 'color' | 'cmyk';
-  halftoneShape?: 'round' | 'square';
+  halftoneShape?: HalftoneShape;
   halftoneInvert?: boolean;
   halftoneIntensity?: number;
   halftoneSharpness?: number;
+  halftoneGrit?: number;
   popartCell?: number;
   popartAngle?: number;
   popartThreshold?: number;
@@ -76,4 +85,7 @@ export interface OutputPreviewProps {
   mangaAngle?: number;
   mangaLineWeight?: number;
   mangaContrast?: number;
+  grade?: import("../../modules/grading/engine/grade-types").ColorGrade;
+  masks?: import("../../modules/grading/mask/mask-types").MaskLayer[];
+  overlayMaskId?: string | null;
 }

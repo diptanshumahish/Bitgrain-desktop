@@ -1,4 +1,6 @@
 import type { TextLayer } from "../../../../../data/studioTypes";
+import { elementDecoration, mergeDecoration } from "../../../rich-text/text-decoration";
+import { parseLetterSpacing, setCanvasLetterSpacing } from "../../../rich-text/letter-spacing";
 
 export interface RenderRun {
   text: string;
@@ -7,6 +9,10 @@ export interface RenderRun {
   fontFamily: string;
   fontSize: number;
   fontStyle: string;
+  underline?: boolean;
+  strike?: boolean;
+  textTransform?: string;
+  letterSpacing?: number;
 }
 
 export const parseHtmlRuns = (
@@ -40,7 +46,11 @@ export const parseHtmlRuns = (
     if (["DIV", "P"].includes(el.tagName) && result.length > 0)
       result.push("\n");
 
-    const s = { ...style };
+    const decoration = mergeDecoration(
+      { underline: Boolean(style.underline), strike: Boolean(style.strike) },
+      elementDecoration(el),
+    );
+    const s = { ...style, ...decoration };
     if (el.style.color) s.color = el.style.color;
     if (el.style.fontWeight) s.fontWeight = el.style.fontWeight;
     if (el.style.fontFamily) s.fontFamily = el.style.fontFamily;
@@ -53,6 +63,8 @@ export const parseHtmlRuns = (
       if (raw.endsWith("em")) s.fontSize = style.fontSize * parseFloat(raw);
       else s.fontSize = parseFloat(raw);
     }
+    if (el.style.textTransform) s.textTransform = el.style.textTransform;
+    if (el.style.letterSpacing) s.letterSpacing = parseLetterSpacing(el.style.letterSpacing, s.fontSize);
     if (el.tagName === "B" || el.tagName === "STRONG") s.fontWeight = "bold";
     if (el.tagName === "I" || el.tagName === "EM") s.fontStyle = "italic";
 
@@ -141,6 +153,7 @@ export const wrapRichLine = (
     ctx.font = [fs, run.fontWeight, `${run.fontSize * s}px`, run.fontFamily]
       .filter(Boolean)
       .join(" ");
+    if (run.letterSpacing !== undefined) setCanvasLetterSpacing(ctx, run.letterSpacing * s);
     return ctx.measureText(text).width;
   };
 

@@ -173,8 +173,6 @@ export function encodeHdrPng(options: HdrPngOptions): Uint8Array<ArrayBuffer> {
   return concat(parts);
 }
 
-export const HDR_DEFAULT_PEAK_NITS = HDR_TARGET_NITS_DEFAULT;
-
 export async function canvasToHdrBlob(
   canvas: HTMLCanvasElement,
   peakNits?: number,

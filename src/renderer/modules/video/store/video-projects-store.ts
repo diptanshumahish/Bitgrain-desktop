@@ -9,7 +9,7 @@ import { userSignal } from "../../../hooks/useAuth";
 import * as ProjectsAPI from "../../../lib/projects-api";
 import type { ServerProject, ServerProjectSummary } from "../../../lib/projects-api";
 import { resolveAssetUrl } from "../../../lib/api-client";
-import { saveToCloud } from "../../../lib/save-to-cloud";
+import { syncToCloud } from "../../../lib/save-to-cloud";
 
 const DEFAULT_VIDEO_DIMENSION = 1;
 const DEFAULT_VIDEO_FPS = 30;
@@ -94,8 +94,8 @@ export async function loadVideoProjects(): Promise<void> {
 }
 
 export async function saveVideoProject(project: VideoProject): Promise<void> {
-  const savedToCloud = await saveToCloud(projectToCloud(project));
-  if (!savedToCloud) {
+  const outcome = await syncToCloud(projectToCloud(project));
+  if (outcome !== "saved") {
     await persistProject(project);
   }
 
@@ -107,8 +107,8 @@ export async function saveVideoProject(project: VideoProject): Promise<void> {
 export async function getVideoProjectById(id: string): Promise<VideoProject | null> {
   const user = userSignal.value;
   if (user) {
-    const cloud = await ProjectsAPI.getProject(id);
-    if (cloud) return cloudToProject(cloud);
+    const cloud = await ProjectsAPI.fetchProject(id);
+    if (cloud.kind === "ok") return cloudToProject(cloud.data);
   }
   const projects = await getAllProjects();
   return projects.find((p) => p.id === id) || null;

@@ -15,6 +15,19 @@ export const RESIZE_FORMATS: ResizeFormat[] = [
   { id: "cover", label: "album cover", width: 3000, height: 3000 },
   { id: "banner", label: "wide banner", width: 1500, height: 500 },
   { id: "print", label: "a4 print", width: 2480, height: 3508 },
+  { id: "apple-cover", label: "apple music cover", width: 2400, height: 2400 },
+  { id: "amazon-cover", label: "amazon music cover", width: 1600, height: 1600 },
+  { id: "spotify-canvas", label: "spotify canvas still", width: 1080, height: 1920 },
+  { id: "tour-poster", label: "tour poster, a3", width: 3508, height: 4961 },
+];
+
+export const RELEASE_KIT_FORMAT_IDS: readonly string[] = [
+  "cover",
+  "apple-cover",
+  "amazon-cover",
+  "spotify-canvas",
+  "story",
+  "tour-poster",
 ];
 
 const FULL_BLEED_COVERAGE = 0.96;

@@ -1,42 +1,18 @@
 import React from "react";
-import { ChevronDown, PanelLeftClose } from "lucide-react";
+import { PanelLeftClose } from "lucide-react";
 import type { Layer, TemplateDef, TemplatePage } from "../../data/studioTypes";
 import { TemplateGrid } from "./panels/TemplateGrid";
 import { PagedLayersList } from "./panels/PagedLayersList";
 import { SectionLogo } from "../section-nav/SectionLogo";
-import {
-  toggleLeftPanel,
-  useLeftLayersCollapsed,
-  useLeftTemplatesCollapsed,
-  toggleLeftLayers,
-  toggleLeftTemplates,
-} from "../../store/studio-panels-store";
+import { toggleLeftPanel, useLeftPanelTab, useLeftPanelTabDirection } from "../../store/studio-panels-store";
+import { LeftPanelTabs } from "./left-panel/left-panel-tabs";
+import { ElementsPanel } from "../../modules/elements/components/elements-panel";
+import { trackEvent } from "../../lib/tracker";
 
-interface SectionHeaderProps {
-  title: string;
-  collapsed: boolean;
-  onToggle: () => void;
-}
-
-const SectionHeader: React.FC<SectionHeaderProps> = ({ title, collapsed, onToggle }) => (
-  <button
-    onClick={onToggle}
-    className="px-3.5 py-2.5 w-full flex items-center justify-between border-b border-[var(--s-border)] bg-[var(--s-bg-panel)] sticky top-0 z-10 cursor-pointer hover:bg-[var(--s-bg-input)]/40 transition-colors group"
-    aria-expanded={!collapsed}
-    aria-label={`Toggle ${title}`}
-  >
-    <span className="text-[11.5px] font-semibold text-[var(--s-text)]  ">
-      {title}
-    </span>
-    <ChevronDown
-      size={13}
-      strokeWidth={1.75}
-      className={`text-[var(--s-text-subtle)] group-hover:text-[var(--s-text-muted)] transition-transform duration-200 ${
-        collapsed ? "-rotate-90" : "rotate-0"
-      }`}
-    />
-  </button>
-);
+const collapseLeftPanel = (): void => {
+  trackEvent("studio", "panel_collapsed", { details: { side: "left" } });
+  toggleLeftPanel();
+};
 
 interface LeftPanelProps {
   selectedTemplateId: string;
@@ -48,7 +24,7 @@ interface LeftPanelProps {
   onAddFrame: (width: number, height: number, name?: string) => void;
   frameWidth: number;
   frameHeight: number;
-  onDuplicatePage: () => void;
+  onDuplicatePage: (pageId: string) => void;
   onDeletePage: (id: string) => void;
   onSelectLayer: (id: string, multi?: boolean) => void;
   onSelectLayerIds: (ids: string[]) => void;
@@ -81,8 +57,8 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   onUngroup,
   onDuplicate,
 }) => {
-  const isTemplatesCollapsed = useLeftTemplatesCollapsed();
-  const isLayersCollapsed = useLeftLayersCollapsed();
+  const activeTab = useLeftPanelTab();
+  const slideDirection = useLeftPanelTabDirection();
 
   return (
     <div
@@ -98,7 +74,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
         />
         <button
           type="button"
-          onClick={toggleLeftPanel}
+          onClick={collapseLeftPanel}
           aria-label="Hide left panel"
           title="Hide left panel"
           className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--s-text-subtle)] hover:bg-[var(--s-bg-input)] hover:text-[var(--s-text)] transition-colors"
@@ -107,53 +83,41 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className={`flex flex-col min-h-0 border-b border-[var(--s-border)] ${isLayersCollapsed ? "" : "flex-1"}`}>
-          <SectionHeader
-            title="Layers"
-            collapsed={isLayersCollapsed}
-            onToggle={toggleLeftLayers}
-          />
-          {!isLayersCollapsed && (
-            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
-              <PagedLayersList
-                pages={pages}
-                activePageId={activePageId}
-                selectedIds={selectedLayerIds}
-                onSelectPage={onSelectPage}
-                onAddFrame={onAddFrame}
-                frameWidth={frameWidth}
-                frameHeight={frameHeight}
-                onDuplicatePage={onDuplicatePage}
-                onDeletePage={onDeletePage}
-                onSelect={onSelectLayer}
-                onSelectIds={onSelectLayerIds}
-                onUpdateLayer={onUpdateLayer}
-                onDeleteLayer={onDeleteLayer}
-                onReorderLayersForPage={onReorderLayersForPage}
-                onGroup={onGroup}
-                onUngroup={onUngroup}
-                onDuplicate={onDuplicate}
-              />
-            </div>
-          )}
-        </div>
+      <LeftPanelTabs activeTab={activeTab} />
 
-        <div className={`flex flex-col min-h-0 ${isTemplatesCollapsed ? "" : "flex-1"}`}>
-          <SectionHeader
-            title="Templates"
-            collapsed={isTemplatesCollapsed}
-            onToggle={toggleLeftTemplates}
-          />
-          {!isTemplatesCollapsed && (
-            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
-              <TemplateGrid
-                selectedId={selectedTemplateId}
-                onSelect={onSelectTemplate}
-              />
-            </div>
-          )}
-        </div>
+      <div
+        key={activeTab}
+        className={`flex-1 min-h-0 flex flex-col ${slideDirection === "right" ? "animate-tab-in-right" : "animate-tab-in-left"}`}
+      >
+        {activeTab === "layers" && (
+          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+            <PagedLayersList
+              pages={pages}
+              activePageId={activePageId}
+              selectedIds={selectedLayerIds}
+              onSelectPage={onSelectPage}
+              onAddFrame={onAddFrame}
+              frameWidth={frameWidth}
+              frameHeight={frameHeight}
+              onDuplicatePage={onDuplicatePage}
+              onDeletePage={onDeletePage}
+              onSelect={onSelectLayer}
+              onSelectIds={onSelectLayerIds}
+              onUpdateLayer={onUpdateLayer}
+              onDeleteLayer={onDeleteLayer}
+              onReorderLayersForPage={onReorderLayersForPage}
+              onGroup={onGroup}
+              onUngroup={onUngroup}
+              onDuplicate={onDuplicate}
+            />
+          </div>
+        )}
+        {activeTab === "elements" && <ElementsPanel />}
+        {activeTab === "templates" && (
+          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+            <TemplateGrid selectedId={selectedTemplateId} onSelect={onSelectTemplate} />
+          </div>
+        )}
       </div>
     </div>
   );

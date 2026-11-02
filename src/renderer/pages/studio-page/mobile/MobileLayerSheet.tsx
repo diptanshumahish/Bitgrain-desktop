@@ -4,6 +4,7 @@ import type { Layer, TextLayer, ShapeLayer } from "../../../data/studioTypes";
 import { FONT_FAMILIES } from "../../../data/studioTypes";
 import { useSignalValue } from "../../../lib/signal";
 import { adminFontOptionsSignal, availableWeightsForFamily, availableStylesForFamily } from "../../../lib/admin-fonts";
+import { SliderTrack } from "../../../components/studio/ui/slider-track/slider-track";
 
 const SCALE_DOWN = 0.9;
 const SCALE_UP = 1.1;
@@ -29,6 +30,7 @@ interface MobileLayerSheetProps {
 
 const FONT_MIN = 8;
 const FONT_MAX = 400;
+const PERCENT = 100;
 const ALIGNMENTS: { value: TextLayer["align"]; icon: React.ReactNode }[] = [
   { value: "left", icon: <AlignLeft size={16} strokeWidth={2} /> },
   { value: "center", icon: <AlignCenter size={16} strokeWidth={2} /> },
@@ -127,14 +129,16 @@ export const MobileLayerSheet: React.FC<MobileLayerSheetProps> = ({ layer, onUpd
 
       {text && (
         <Row label="font size">
-          <input
-            type="range"
-            min={FONT_MIN}
-            max={FONT_MAX}
-            value={text.fontSize}
-            onChange={(event) => onUpdate({ fontSize: Number(event.target.value) } as Partial<Layer>)}
-            className="w-44 accent-violet-500"
-          />
+          <div className="w-44">
+            <SliderTrack
+              ariaLabel="Font size"
+              min={FONT_MIN}
+              max={FONT_MAX}
+              step={1}
+              value={text.fontSize}
+              onChange={(fontSize) => onUpdate({ fontSize } as Partial<Layer>)}
+            />
+          </div>
         </Row>
       )}
 
@@ -192,14 +196,16 @@ export const MobileLayerSheet: React.FC<MobileLayerSheetProps> = ({ layer, onUpd
       )}
 
       <Row label="opacity">
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={Math.round(layer.opacity * 100)}
-          onChange={(event) => onUpdate({ opacity: Number(event.target.value) / 100 })}
-          className="w-44 accent-violet-500"
-        />
+        <div className="w-44">
+          <SliderTrack
+            ariaLabel="Opacity"
+            min={0}
+            max={PERCENT}
+            step={1}
+            value={Math.round(layer.opacity * PERCENT)}
+            onChange={(opacity) => onUpdate({ opacity: opacity / PERCENT })}
+          />
+        </div>
       </Row>
 
       <div className="px-5 pt-2">

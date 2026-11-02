@@ -1,5 +1,7 @@
 import type { TextLayer } from "../../../../../data/studioTypes";
 import { parseHtmlRuns, wrapLine, wrapRichLine, type RenderRun } from "./text-helpers";
+import { parseDecoration } from "../../../rich-text/text-decoration";
+import { setCanvasLetterSpacing } from "../../../rich-text/letter-spacing";
 
 export interface PositionedRun {
   text: string;
@@ -8,6 +10,10 @@ export interface PositionedRun {
   width: number;
   font: string;
   color: string | null;
+  fontSize: number;
+  letterSpacing: number;
+  underline: boolean;
+  strike: boolean;
 }
 
 export const transformCase = (text: string, transform: TextLayer["textTransform"]): string => {
@@ -38,6 +44,7 @@ export const layoutPlainText = (
   ctx.font = baseFont;
   const lines = text.split("\n").flatMap((rawLine) => wrapLine(ctx, rawLine, layer.width * s));
   const lineHeight = layer.fontSize * s * layer.lineHeight;
+  const decoration = parseDecoration(layer.textDecoration);
   return lines.map((line, index) => {
     const width = ctx.measureText(line).width;
     return {
@@ -47,6 +54,9 @@ export const layoutPlainText = (
       width,
       font: baseFont,
       color: null,
+      fontSize: layer.fontSize * s,
+      letterSpacing: layer.letterSpacing * s,
+      ...decoration,
     };
   });
 };
@@ -70,13 +80,25 @@ const positionVisualLine = (
   const measured = runs.map((run) => {
     const font = runFont(run, s);
     ctx.font = font;
+    setCanvasLetterSpacing(ctx, (run.letterSpacing ?? layer.letterSpacing) * s);
     return { run, font, width: ctx.measureText(run.text).width };
   });
   const lineWidth = measured.reduce((total, item) => total + item.width, 0);
   let cursorX = alignedStart(layer, s, lineWidth);
   const useGradient = Boolean(layer.gradientText?.enabled);
   return measured.map(({ run, font, width }) => {
-    const positioned = { text: run.text, x: cursorX, y, width, font, color: useGradient ? null : run.color };
+    const positioned: PositionedRun = {
+      text: run.text,
+      x: cursorX,
+      y,
+      width,
+      font,
+      color: useGradient ? null : run.color,
+      fontSize: run.fontSize * s,
+      letterSpacing: (run.letterSpacing ?? layer.letterSpacing) * s,
+      underline: Boolean(run.underline),
+      strike: Boolean(run.strike),
+    };
     cursorX += width;
     return positioned;
   });
@@ -94,9 +116,14 @@ export const layoutRichText = (
     fontFamily: layer.fontFamily,
     fontSize: layer.fontSize,
     fontStyle: baseStyle || "normal",
+    ...parseDecoration(layer.textDecoration),
+    textTransform: layer.textTransform,
+    letterSpacing: layer.letterSpacing,
   };
   const tokens = parseHtmlRuns(layer.richContent ?? "", base).map((token) =>
-    token === "\n" ? token : { ...token, text: transformCase(token.text, layer.textTransform) },
+    token === "\n"
+      ? token
+      : { ...token, text: transformCase(token.text, (token.textTransform ?? layer.textTransform) as TextLayer["textTransform"]) },
   );
   const lineHeight = layer.fontSize * s * layer.lineHeight;
   const positioned: PositionedRun[] = [];

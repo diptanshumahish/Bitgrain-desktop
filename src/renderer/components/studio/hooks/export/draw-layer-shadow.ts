@@ -1,5 +1,5 @@
 import type { ImageLayer, LayerShadow, UploadLayer } from "../../../../data/studioTypes";
-import { applyFlip, applyRotation, containFit, coverFit } from "./image-helpers";
+import { applyFlip, applyRotation, drawFitted } from "./image-helpers";
 
 type ShadowableLayer = ImageLayer | UploadLayer;
 
@@ -32,9 +32,7 @@ const composeLayerCanvas = (
   }
   if (filterStr) ctx.filter = filterStr;
   ctx.imageSmoothingEnabled = false;
-  if (layer.fit === "cover") coverFit(ctx, source, 0, 0, width, height);
-  else if (layer.fit === "contain") containFit(ctx, source, 0, 0, width, height);
-  else ctx.drawImage(source, 0, 0, width, height);
+  drawFitted(ctx, source, layer.fit, { x: 0, y: 0, width, height }, layer.crop);
   return canvas;
 };
 

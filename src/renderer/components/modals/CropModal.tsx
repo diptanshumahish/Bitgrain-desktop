@@ -3,8 +3,10 @@ import { X, Check, RotateCcw } from "lucide-react";
 import { imageSignal } from "../../store/image-store";
 import { replaceWorkingImage } from "../../pages/home-page/replace-working-image";
 import { trackEvent } from "../../lib/tracker";
+import { CropOverlay } from "./crop/CropOverlay";
+import { CropAspectChips } from "./crop/CropAspectChips";
+import { centeredAspectRect, lockRectToAspect, type CropRect } from "./crop/crop-aspect";
 
-interface Rect { x: number; y: number; w: number; h: number }
 type Handle = "tl" | "tr" | "bl" | "br" | "move" | null;
 
 const MIN_SIZE = 20;
@@ -19,14 +21,16 @@ export const CropModal: React.FC<CropModalProps> = ({ onClose }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(null);
-  const [rect, setRect] = useState<Rect>({ x: 0, y: 0, w: 0, h: 0 });
+  const [rect, setRect] = useState<CropRect>({ x: 0, y: 0, w: 0, h: 0 });
   const [imgDisplay, setImgDisplay] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [aspectId, setAspectId] = useState("free");
+  const aspectRatioRef = useRef<number | null>(null);
 
   const dragRef = useRef<{
     handle: Handle;
     startX: number;
     startY: number;
-    startRect: Rect;
+    startRect: CropRect;
   } | null>(null);
 
   const measureImg = useCallback(() => {
@@ -123,7 +127,13 @@ export const CropModal: React.FC<CropModalProps> = ({ onClose }) => {
       x = newX;
       y = newY;
     }
-    setRect({ x, y, w, h });
+    const ratio = aspectRatioRef.current;
+    const next = { x, y, w, h };
+    if (ratio && handle !== "move") {
+      setRect(lockRectToAspect(next, handle === "tl" || handle === "bl", handle === "tl" || handle === "tr", ratio, maxW, maxH));
+      return;
+    }
+    setRect(next);
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
@@ -132,7 +142,17 @@ export const CropModal: React.FC<CropModalProps> = ({ onClose }) => {
   };
 
   const reset = () => {
+    aspectRatioRef.current = null;
+    setAspectId("free");
     if (imgDisplay) setRect({ x: 0, y: 0, w: imgDisplay.w, h: imgDisplay.h });
+  };
+
+  const selectAspect = (id: string, ratio: number | null): void => {
+    aspectRatioRef.current = ratio;
+    setAspectId(id);
+    if (!imgDisplay) return;
+    setRect(ratio ? centeredAspectRect(imgDisplay.w, imgDisplay.h, ratio) : { x: 0, y: 0, w: imgDisplay.w, h: imgDisplay.h });
+    trackEvent("home", "crop_aspect_selected", { details: { aspect: id } });
   };
 
   const toImagePixels = (value: number, axis: "x" | "y"): number => {
@@ -155,6 +175,7 @@ export const CropModal: React.FC<CropModalProps> = ({ onClose }) => {
     ctx.drawImage(imgRef.current, sx, sy, sw, sh, 0, 0, sw, sh);
     try {
       await replaceWorkingImage(canvas);
+      trackEvent("home", "crop_applied", { details: { width: sw, height: sh } });
       onClose();
     } catch (error) {
       trackEvent("home", "crop_failed", {
@@ -166,16 +187,16 @@ export const CropModal: React.FC<CropModalProps> = ({ onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm font-editorial">
       <div className="relative flex flex-col bg-zinc-950 rounded-2xl border border-zinc-800 overflow-hidden max-w-[min(90vw,860px)] max-h-[90vh]">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
+        <div className="flex items-center justify-between px-4 py-1 border-b border-zinc-800 shrink-0">
           <span className="text-sm font-semibold text-white">Crop image</span>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+          <button type="button" aria-label="Close crop" onClick={() => { trackEvent("home", "crop_cancelled"); onClose(); }} className="w-11 h-11 -mr-3 flex items-center justify-center text-zinc-500 hover:text-white transition-colors">
             <X size={16} />
           </button>
         </div>
 
         <div
           ref={containerRef}
-          className="relative flex items-center justify-center overflow-hidden bg-zinc-900 select-none min-w-[min(280px,90vw)] min-h-[200px] max-h-[calc(90vh-120px)] cursor-crosshair"
+          className="relative flex items-center justify-center overflow-hidden bg-zinc-900 select-none min-w-[min(280px,90vw)] min-h-[200px] max-h-[calc(90vh-170px)] cursor-crosshair"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -185,69 +206,17 @@ export const CropModal: React.FC<CropModalProps> = ({ onClose }) => {
             src={imageUrl}
             alt="crop"
             crossOrigin="anonymous"
-            className="block max-w-full max-h-[calc(90vh-120px)] object-contain pointer-events-none select-none"
+            className="block max-w-full max-h-[calc(90vh-170px)] object-contain pointer-events-none select-none"
             draggable={false}
           />
-          {imgDisplay && (
-            <svg className="absolute inset-0 w-full h-full pointer-events-none left-0 top-0">
-              <defs>
-                <mask id="crop-mask">
-                  <rect width="100%" height="100%" fill="white" />
-                  <rect
-                    x={imgDisplay.x + rect.x}
-                    y={imgDisplay.y + rect.y}
-                    width={rect.w}
-                    height={rect.h}
-                    fill="black"
-                  />
-                </mask>
-              </defs>
-              <rect width="100%" height="100%" fill="rgba(0,0,0,0.55)" mask="url(#crop-mask)" />
-              <rect
-                x={imgDisplay.x + rect.x}
-                y={imgDisplay.y + rect.y}
-                width={rect.w}
-                height={rect.h}
-                fill="none"
-                stroke="white"
-                strokeWidth={1.5}
-              />
-              {[1, 2].map((i) => (
-                <React.Fragment key={i}>
-                  <line
-                    x1={imgDisplay.x + rect.x + (rect.w / 3) * i}
-                    y1={imgDisplay.y + rect.y}
-                    x2={imgDisplay.x + rect.x + (rect.w / 3) * i}
-                    y2={imgDisplay.y + rect.y + rect.h}
-                    stroke="rgba(255,255,255,0.2)"
-                    strokeWidth={1}
-                  />
-                  <line
-                    x1={imgDisplay.x + rect.x}
-                    y1={imgDisplay.y + rect.y + (rect.h / 3) * i}
-                    x2={imgDisplay.x + rect.x + rect.w}
-                    y2={imgDisplay.y + rect.y + (rect.h / 3) * i}
-                    stroke="rgba(255,255,255,0.2)"
-                    strokeWidth={1}
-                  />
-                </React.Fragment>
-              ))}
-              {([[rect.x, rect.y], [rect.x + rect.w, rect.y], [rect.x, rect.y + rect.h], [rect.x + rect.w, rect.y + rect.h]] as [number, number][]).map(([hx, hy], i) => (
-                <rect
-                  key={i}
-                  x={imgDisplay.x + hx - HANDLE_SIZE / 2}
-                  y={imgDisplay.y + hy - HANDLE_SIZE / 2}
-                  width={HANDLE_SIZE}
-                  height={HANDLE_SIZE}
-                  fill="white"
-                  rx={2}
-                />
-              ))}
-            </svg>
-          )}
+          {imgDisplay && <CropOverlay display={imgDisplay} rect={rect} handleSize={HANDLE_SIZE} />}
         </div>
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800 shrink-0 gap-3">
+        <div className="px-3 pt-3 border-t border-zinc-800 shrink-0">
+          <CropAspectChips activeId={aspectId} onSelect={selectAspect} />
+        </div>
+
+        <div className="flex items-center justify-between px-4 py-3 shrink-0 gap-3">
           <span className="text-xs text-zinc-500">
             {imgDisplay ? `${toImagePixels(rect.w, "x")} × ${toImagePixels(rect.h, "y")} px` : ""}
           </span>

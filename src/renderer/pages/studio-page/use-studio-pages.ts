@@ -4,7 +4,7 @@ import {
   duplicatePage,
   getTemplatePages,
   makeBlankPage,
-  makePageId,
+  nextPageX,
 } from "../../data/templates/template-pages";
 import { makeFrameId } from "../../data/templates/frame-page-bridge";
 import { updateLayersRecursively } from "../../utils/studio-layers";
@@ -72,6 +72,7 @@ export interface UseStudioPagesResult {
   addPage: () => string;
   addPageWithSize: (width: number, height: number, name?: string, x?: number, y?: number) => string;
   duplicateActivePage: () => string | null;
+  duplicatePageById: (pageId: string) => string | null;
   deletePage: (id: string) => void;
   renamePage: (id: string, name: string) => void;
   reorderPages: (fromIndex: number, toIndex: number) => void;
@@ -265,39 +266,31 @@ export const useStudioPages = ({
   }, []);
 
   const addPage = useCallback((): string => {
-    const id = makePageId(pages.length + 1);
-    setPagesState((prev) => [
-      ...prev,
-      makeBlankPage(
-        activePage?.background ?? "#ffffff",
-        prev.length + 1,
-        activePage?.width ?? initialTemplate.width,
-        activePage?.height ?? initialTemplate.height,
-        (activePage?.x ?? 0) + (activePage?.width ?? initialTemplate.width) + 80,
-        activePage?.y ?? 0,
-      ),
-    ]);
-    return id;
-    // addPage intentionally reads activePage/template dimensions on demand,
-    // so it only needs to re-bind when the page count or active background changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pages.length, activePage?.background]);
+    const page = makeBlankPage(
+      activePage?.background ?? DEFAULT_FRAME_BACKGROUND,
+      pages.length + 1,
+      activePage?.width ?? initialTemplate.width,
+      activePage?.height ?? initialTemplate.height,
+      nextPageX(pages),
+      activePage?.y ?? 0,
+    );
+    setPagesState((prev) => [...prev, page]);
+    return page.id;
+  }, [pages, activePage, initialTemplate.width, initialTemplate.height]);
 
-  // Adds a blank frame at a specific size (predefined or custom). When posX/posY
-  // are given (Figma-style drag-to-create) the frame lands there; otherwise it is
-  // placed to the right of the last frame. Uses a unique id so it can't collide
-  // with ids that were freed by deletions.
+  // Desktop: adds a blank frame at a specific size (predefined or custom). When
+  // posX/posY are given the frame lands there; otherwise it is placed to the right
+  // of the last frame. Uses a unique id so it can't collide with freed ids.
   const addPageWithSize = useCallback(
     (width: number, height: number, name?: string, posX?: number, posY?: number): string => {
       const w = Math.max(50, Math.round(width));
       const h = Math.max(50, Math.round(height));
       const id = crypto.randomUUID();
       setPagesState((prev) => {
-        const last = prev[prev.length - 1];
-        const x = posX !== undefined ? Math.round(posX) : last ? last.x + last.width + 80 : 0;
-        const y = posY !== undefined ? Math.round(posY) : last?.y ?? 0;
+        const x = posX !== undefined ? Math.round(posX) : nextPageX(prev);
+        const y = posY !== undefined ? Math.round(posY) : prev[prev.length - 1]?.y ?? 0;
         const page = makeBlankPage(
-          activePage?.background ?? initialTemplate.background ?? "#ffffff",
+          activePage?.background ?? initialTemplate.background ?? DEFAULT_FRAME_BACKGROUND,
           prev.length + 1,
           w,
           h,
@@ -307,22 +300,25 @@ export const useStudioPages = ({
         return [...prev, { ...page, id, name: name ?? page.name }];
       });
       return id;
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [activePage?.background],
+    [activePage?.background, initialTemplate.background],
   );
 
-  const duplicateActivePage = useCallback((): string | null => {
-    if (!activePage) return null;
-    const next = duplicatePage(activePage, pages.length + 1);
+  const duplicatePageById = useCallback((pageId: string): string | null => {
+    const source = pages.find((page) => page.id === pageId);
+    if (!source) return null;
+    const next = duplicatePage(source, nextPageX(pages));
     setPagesState((prev) => {
-      const idx = prev.findIndex((page) => page.id === activePage.id);
-      const copy = [...prev];
-      copy.splice(idx + 1, 0, next);
-      return copy;
+      const sourceIndex = prev.findIndex((page) => page.id === pageId);
+      return [...prev.slice(0, sourceIndex + 1), next, ...prev.slice(sourceIndex + 1)];
     });
     return next.id;
-  }, [activePage, pages.length]);
+  }, [pages]);
+
+  const duplicateActivePage = useCallback(
+    (): string | null => (activePage ? duplicatePageById(activePage.id) : null),
+    [activePage, duplicatePageById],
+  );
 
   const deletePage = useCallback(
     (id: string) => {
@@ -524,6 +520,7 @@ export const useStudioPages = ({
     addPage,
     addPageWithSize,
     duplicateActivePage,
+    duplicatePageById,
     deletePage,
     renamePage,
     reorderPages,

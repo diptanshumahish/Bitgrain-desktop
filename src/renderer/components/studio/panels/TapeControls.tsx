@@ -1,6 +1,7 @@
 import React from "react";
+import { PanelGroup } from "../ui/panel-group";
 import type { TapeCorners, TapeStrips } from "../../../data/studioTypes";
-import { Section, Toggle, SmallBtn, OpacityRow } from "../ui/panelPrimitives";
+import { Toggle, SmallBtn, OpacityRow } from "../ui/panelPrimitives";
 import { ColorPicker } from "../ui/ColorPicker";
 import { defaultTapeStrips } from "../../../utils/tape";
 
@@ -32,9 +33,9 @@ export const TapeControls: React.FC<TapeControlsProps> = ({ tape, onChange }) =>
   };
 
   return (
-    <Section
+    <PanelGroup
       title="Tape"
-      right={<Toggle value={Boolean(tape)} onChange={handleToggle} />}
+      actions={<Toggle value={Boolean(tape)} onChange={handleToggle} />}
     >
       {tape && (
         <div className="flex flex-col gap-2 pt-0.5">
@@ -59,6 +60,6 @@ export const TapeControls: React.FC<TapeControlsProps> = ({ tape, onChange }) =>
           <OpacityRow value={tape.opacity} onChange={(opacity) => update({ opacity })} />
         </div>
       )}
-    </Section>
+    </PanelGroup>
   );
 };

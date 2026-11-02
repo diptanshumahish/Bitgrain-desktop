@@ -8,6 +8,7 @@ import { Dropdown } from "../ui/dropdown";
 import { PanelGroup } from "../ui/panel-group";
 import { AlignRow } from "../ui/align-row";
 import { PositionSizeFields } from "../ui/position-size-fields";
+import { ShapeSpecimenCard } from "./shape/ShapeSpecimenCard";
 
 interface ShapePropertiesProps {
   layer: ShapeLayer;
@@ -67,6 +68,7 @@ export const ShapeProperties: React.FC<ShapePropertiesProps> = ({
 
   return (
     <div className="flex flex-col font-editorial">
+      <ShapeSpecimenCard layer={layer} />
       <PanelGroup title="Position & Size">
         {onAlign && <AlignRow onAlign={onAlign} />}
         <PositionSizeFields
@@ -127,7 +129,7 @@ export const ShapeProperties: React.FC<ShapePropertiesProps> = ({
           <>
             <div className="grid grid-cols-2 gap-2">
               <ScrubField
-                label="Stroke width"
+                label="Weight"
                 value={layer.strokeWidth}
                 min={0}
                 max={100}

@@ -4,6 +4,7 @@ import type {
   TemplateDef,
   TemplatePageInput,
 } from "../data/studioTypes";
+import { mirrorFirstPage } from "./mirror-first-page";
 
 export interface ApiTemplate {
   id: string;
@@ -29,12 +30,12 @@ export interface ApiTemplate {
 }
 
 export function toTemplateDef(t: ApiTemplate): TemplateDef {
-  return {
+  return mirrorFirstPage({
+    ...t.data,
     id: t.id,
     name: t.name,
     category: t.category as TemplateDef["category"],
     free: t.isFree,
     featured: t.featured,
-    ...t.data,
-  };
+  });
 }

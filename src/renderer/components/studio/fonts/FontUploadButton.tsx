@@ -1,11 +1,13 @@
 import React, { useRef } from "react";
-import { Upload } from "lucide-react";
 import type { CustomFontEntry } from "../../../data/studioTypes";
 import { emitModal } from "../../../lib/event-bus";
 import { storeCustomFont, toFontEntry } from "./custom-font-storage";
 import { ACCEPTED_FONT_TYPES, isFontFile, readFontFile } from "./read-font-file";
 
 interface FontUploadButtonProps {
+  className: string;
+  title: string;
+  children: React.ReactNode;
   onUploaded: (font: CustomFontEntry) => void;
 }
 
@@ -19,7 +21,7 @@ const showFontError = (message: string): void => {
   });
 };
 
-export const FontUploadButton: React.FC<FontUploadButtonProps> = ({ onUploaded }) => {
+export const FontUploadButton: React.FC<FontUploadButtonProps> = ({ className, title, children, onUploaded }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
@@ -44,10 +46,10 @@ export const FontUploadButton: React.FC<FontUploadButtonProps> = ({ onUploaded }
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="flex items-center gap-1.5 text-[10px] text-[var(--s-text-subtle)] hover:text-[var(--s-accent)] transition-colors bg-transparent border-none cursor-pointer w-fit"
+        title={title}
+        className={className}
       >
-        <Upload size={11} strokeWidth={1.5} />
-        Upload a font
+        {children}
       </button>
       <input
         ref={inputRef}

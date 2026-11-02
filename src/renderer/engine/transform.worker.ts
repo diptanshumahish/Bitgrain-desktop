@@ -1,7 +1,12 @@
+import type { HalftoneShape } from './plugins/halftone/halftone-defaults';
 import { runTransform } from './engine';
 import type { TransformMode, DitherMethod, Palette } from './types';
+import type { ColorGrade } from '../modules/grading/engine/grade-types';
+import type { WorkerMaskLayer } from '../modules/grading/mask/mask-types';
+import { resolveBrushAlphas, setWorkerBrushes } from '../modules/grading/mask/worker-brushes';
 import { ASCII_CELL_W, ASCII_CELL_H, ASCII_TARGET_COLS } from './plugins/ascii';
 import { BRAILLE_CELL_W, BRAILLE_CELL_H, BRAILLE_TARGET_COLS } from './plugins/braille';
+import { asciiSampleSize } from './plugins/ascii/ascii-sampling';
 
 interface ProcessParams {
   resolution: number;
@@ -21,6 +26,7 @@ interface ProcessParams {
   noise?: number;
   hue?: number;
   palette?: Palette;
+  paperColor?: [number, number, number];
   lutId?: string;
   hazeIntensity?: number;
   bloomIntensity?: number;
@@ -28,12 +34,15 @@ interface ProcessParams {
   hazeWarmth?: number;
   // Halftone
   halftoneCell?: number;
+  halftoneLines?: number;
   halftoneAngle?: number;
   halftoneStyle?: 'mono' | 'color' | 'cmyk';
-  halftoneShape?: 'round' | 'square';
+  halftoneShape?: HalftoneShape;
   halftoneInvert?: boolean;
   halftoneIntensity?: number;
   halftoneSharpness?: number;
+  halftoneGrit?: number;
+  halftoneSupersample?: boolean;
   // Pop Grunge
   popartCell?: number;
   popartAngle?: number;
@@ -55,12 +64,23 @@ interface ProcessParams {
   mangaContrast?: number;
   exportScale?: number;
   exportTargetWidth?: number;
+  grade?: ColorGrade;
+  masks?: WorkerMaskLayer[];
+  overlayMaskId?: string | null;
 }
 
 const PREVIEW_MAX_DIM = 2000;
 
 const scaleFeatureSize = (value: number | undefined, factor: number): number | undefined =>
   value === undefined ? undefined : value * factor;
+
+const readPixels = (bitmap: ImageBitmap, width: number, height: number): Float32Array => {
+  const canvas = new OffscreenCanvas(width, height);
+  const context = canvas.getContext('2d')!;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(bitmap, 0, 0, width, height);
+  return new Float32Array(context.getImageData(0, 0, width, height).data);
+};
 
 // Cached state, persists across messages
 let cachedBitmap: ImageBitmap | null = null;
@@ -71,6 +91,11 @@ let scratchPixels: Float32Array | null = null;
 
 self.onmessage = (e: MessageEvent) => {
   const { type } = e.data;
+
+  if (type === 'setBrushes') {
+    setWorkerBrushes(e.data.brushes);
+    return;
+  }
 
   if (type === 'setImage') {
     cachedBitmap = e.data.bitmap as ImageBitmap;
@@ -122,22 +147,15 @@ self.onmessage = (e: MessageEvent) => {
     }
 
     let pixels: Float32Array;
+    const { sampleWidth, sampleHeight } = asciiSampleSize(cols, rows, isAscii);
 
     if (type === 'process-single') {
-      const oc = new OffscreenCanvas(cols, rows);
-      const ctx = oc.getContext('2d')!;
-      ctx.drawImage(bitmap, 0, 0, cols, rows);
-      const imgData = ctx.getImageData(0, 0, cols, rows);
-      pixels = new Float32Array(imgData.data);
+      pixels = readPixels(bitmap, sampleWidth, sampleHeight);
     } else {
-      if (cols !== cachedCols || rows !== cachedRows || !cachedPixels) {
-        const oc = new OffscreenCanvas(cols, rows);
-        const ctx = oc.getContext('2d')!;
-        ctx.drawImage(bitmap, 0, 0, cols, rows);
-        const imgData = ctx.getImageData(0, 0, cols, rows);
-        cachedPixels = new Float32Array(imgData.data);
-        cachedCols = cols;
-        cachedRows = rows;
+      if (sampleWidth !== cachedCols || sampleHeight !== cachedRows || !cachedPixels) {
+        cachedPixels = readPixels(bitmap, sampleWidth, sampleHeight);
+        cachedCols = sampleWidth;
+        cachedRows = sampleHeight;
         scratchPixels = null;
       }
       if (!scratchPixels || scratchPixels.length !== cachedPixels.length) {
@@ -149,8 +167,10 @@ self.onmessage = (e: MessageEvent) => {
 
     const result = runTransform(p.modes, {
       data: pixels,
-      width: cols,
-      height: rows,
+      width: sampleWidth,
+      height: sampleHeight,
+      asciiGridCols: cols,
+      asciiGridRows: rows,
       contrast: p.contrast,
       brightness: p.brightness,
       saturation: p.saturation,
@@ -165,18 +185,22 @@ self.onmessage = (e: MessageEvent) => {
       noise: p.noise,
       hue: p.hue,
       palette: p.palette,
+      paperColor: p.paperColor,
       lutId: p.lutId,
       hazeIntensity: p.hazeIntensity,
       bloomIntensity: p.bloomIntensity,
       bloomThreshold: p.bloomThreshold,
       hazeWarmth: p.hazeWarmth,
       halftoneCell: scaleFeatureSize(p.halftoneCell, exportScale),
+      halftoneLines: p.halftoneLines,
       halftoneAngle: p.halftoneAngle,
       halftoneStyle: p.halftoneStyle,
       halftoneShape: p.halftoneShape,
       halftoneInvert: p.halftoneInvert,
       halftoneIntensity: p.halftoneIntensity,
       halftoneSharpness: p.halftoneSharpness,
+      halftoneGrit: p.halftoneGrit,
+      halftoneSupersample: p.halftoneSupersample,
       popartCell: scaleFeatureSize(p.popartCell, exportScale),
       popartAngle: p.popartAngle,
       popartThreshold: p.popartThreshold,
@@ -193,6 +217,10 @@ self.onmessage = (e: MessageEvent) => {
       mangaAngle: p.mangaAngle,
       mangaLineWeight: p.mangaLineWeight,
       mangaContrast: p.mangaContrast,
+      grade: p.grade,
+      masks: p.masks,
+      brushAlphas: resolveBrushAlphas(p.masks, sampleWidth, sampleHeight),
+      overlayMaskId: p.overlayMaskId,
     });
 
     const transfer: Transferable[] = [];
@@ -212,10 +240,13 @@ self.onmessage = (e: MessageEvent) => {
     }
 
     if (result.colorData) transfer.push(result.colorData.buffer);
+    for (const extra of [result.baseData, result.effectAlpha, result.overlayAlpha]) {
+      if (extra) transfer.push(extra.buffer);
+    }
 
     // Halftone produces a scaled-up buffer, use the actual output dimensions if provided
-    const outCols = ((isHalftone || isBraille) && result.gridWidth) ? result.gridWidth : cols;
-    const outRows = ((isHalftone || isBraille) && result.gridHeight) ? result.gridHeight : rows;
+    const outCols = ((isHalftone || isBraille || isAscii) && result.gridWidth) ? result.gridWidth : cols;
+    const outRows = ((isHalftone || isBraille || isAscii) && result.gridHeight) ? result.gridHeight : rows;
 
     (self as unknown as Worker).postMessage(
       {
@@ -229,6 +260,11 @@ self.onmessage = (e: MessageEvent) => {
         charWidth,
         charHeight,
         isDither,
+        baseData: result.baseData ?? null,
+        effectAlpha: result.effectAlpha ?? null,
+        overlayAlpha: result.overlayAlpha ?? null,
+        baseCols: sampleWidth,
+        baseRows: sampleHeight,
       },
       transfer,
     );

@@ -5,6 +5,7 @@ import type { HandleDir } from "./SelectionHandles";
 import { useLayerDrag } from "../hooks/useLayerDrag";
 import { vectorPathToD, dashArrayFor } from "../../../utils/vector-utils";
 import { VectorNodeEditor } from "./VectorNodeEditor";
+import { quantizeRenderScale } from "../../../utils/render-scale";
 
 const fitToAspectRatio = (fit: VectorFillFit): string => {
   if (fit === "stretch") return "none";
@@ -52,7 +53,9 @@ export const VectorLayerView: React.FC<VectorLayerViewProps> = ({
   const fillImage = layer.fillImage;
   const patternId = `vfill-${layer.id}`;
   const pathFill = !layer.path.closed ? "none" : fillImage ? `url(#${patternId})` : layer.fill;
-  const dashArray = dashArrayFor(layer.dashStyle, layer.strokeWidth);
+  const renderScale = quantizeRenderScale(scale);
+  const renderStrokeWidth = layer.strokeWidth * renderScale;
+  const dashArray = dashArrayFor(layer.dashStyle, renderStrokeWidth);
   const reveal = Math.max(0, Math.min(1, (layer.drawProgress ?? 100) / 100));
   const revealing = reveal < 1;
 
@@ -99,8 +102,8 @@ export const VectorLayerView: React.FC<VectorLayerViewProps> = ({
       <svg
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
-        width={layer.width}
-        height={layer.height}
+        width={layer.width * renderScale}
+        height={layer.height * renderScale}
         shapeRendering="geometricPrecision"
         style={{
           display: "block",
@@ -109,6 +112,8 @@ export const VectorLayerView: React.FC<VectorLayerViewProps> = ({
           position: "absolute",
           top: 0,
           left: 0,
+          transformOrigin: "top left",
+          transform: `scale(${1 / renderScale})`,
         }}
       >
         {fillImage && (
@@ -137,7 +142,7 @@ export const VectorLayerView: React.FC<VectorLayerViewProps> = ({
           fill={pathFill}
           fillOpacity={revealing ? reveal : undefined}
           stroke={layer.strokeColor}
-          strokeWidth={layer.strokeWidth}
+          strokeWidth={renderStrokeWidth}
           strokeLinecap={layer.lineCap}
           strokeLinejoin={layer.lineJoin}
           strokeDasharray={revealing ? "1 1" : dashArray}

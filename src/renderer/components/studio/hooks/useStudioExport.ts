@@ -4,6 +4,8 @@ import { applyPngWatermark } from "../../../engine/watermark";
 import { canvasToHdrBlob } from "../../../engine/export/hdr-png-encoder";
 import { STUDIO_HDR_FORMAT } from "../panels/export-state";
 import { renderToCanvas } from "./export/render-canvas";
+import { toDesignFileName } from "../../../lib/design-file-name";
+import { studioWorkNameSignal } from "../../../store/studio-work-name";
 import {
   reportProgress,
   finishProgress,
@@ -81,7 +83,7 @@ export const exportStudio = async (
 
     reportProgress("encoding", INDETERMINATE);
     const ext = extensionForFormat(format);
-    const filename = `bitgrain-studio-${template.id}-${Date.now()}.${ext}`;
+    const filename = `${toDesignFileName(studioWorkNameSignal.value)}.${ext}`;
 
     if (format === STUDIO_HDR_FORMAT) {
       const blob = await canvasToHdrBlob(canvas);

@@ -3,6 +3,7 @@ import { Popover, PopoverSection } from "../Popover";
 import { Slider } from "../slider";
 import { EditableValue } from "../editable-value";
 import type { TransformMode } from "../../../engine/types";
+import { ToggleSwitch } from "../controls/ToggleSwitch";
 
 interface HazeBloomPopoverProps {
   mode: TransformMode[];
@@ -52,13 +53,13 @@ const SliderRow: React.FC<SliderRowProps> = ({ label, value, min, max, step, dis
   };
 
   return (
-    <div className="relative grid grid-cols-[62px_1fr_40px] items-center gap-2">
-      <span className={`text-[9px] select-none transition-opacity ${disabled ? "opacity-35" : "text-[var(--s-text-subtle)]"}`}>{label}</span>
+    <div className="relative grid grid-cols-[84px_1fr_44px] items-center gap-2">
+      <span className={`text-[12px] select-none transition-opacity text-[var(--s-text-muted)]`}>{label}</span>
       <div className="relative" onClick={disabled ? handleDisabledClick : undefined}>
-        <Slider min={min} max={max} step={step} value={value} onChange={disabled ? () => {} : onChange} onDone={disabled ? () => {} : onDone} />
+        <Slider label={label} min={min} max={max} step={step} value={value} onChange={disabled ? () => {} : onChange} onDone={disabled ? () => {} : onDone} />
         {disabled && <div className="absolute inset-0 cursor-not-allowed" />}
         {showTip && (
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-zinc-900 dark:bg-zinc-700 text-white text-[10px] font-medium rounded-md whitespace-nowrap pointer-events-none z-10">
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-zinc-900 dark:bg-zinc-700 text-white text-[12px] font-medium rounded-md whitespace-nowrap pointer-events-none z-10">
             Enable haze & bloom first
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-zinc-900 dark:border-t-zinc-700" />
           </div>
@@ -66,7 +67,7 @@ const SliderRow: React.FC<SliderRowProps> = ({ label, value, min, max, step, dis
       </div>
       {suffix !== undefined ? (
         <EditableValue
-          className={`text-[9px] text-[var(--s-text-subtle)] ${disabled ? "opacity-35" : ""}`}
+          className={`text-[12px] text-[var(--s-text-muted)]`}
           value={value}
           min={min}
           max={max}
@@ -79,7 +80,7 @@ const SliderRow: React.FC<SliderRowProps> = ({ label, value, min, max, step, dis
           onCommit={onDone}
         />
       ) : (
-        <span className={`text-[9px] text-right tabular-nums select-none transition-opacity ${disabled ? "opacity-35" : "text-[var(--s-text-subtle)]"}`}>{display}</span>
+        <span className={`text-[12px] text-right tabular-nums select-none transition-opacity text-[var(--s-text-muted)]`}>{display}</span>
       )}
     </div>
   );
@@ -90,23 +91,6 @@ function warmthLabel(v: number): string {
   if (v > 0.65) return "warm";
   return "neutral";
 }
-
-const ToggleSwitch: React.FC<{ checked: boolean; onChange: () => void }> = ({ checked, onChange }) => (
-  <button
-    onClick={onChange}
-    role="switch"
-    aria-checked={checked}
-    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-      checked ? "bg-[var(--s-accent)]" : "bg-[var(--s-bg-input)]"
-    }`}
-  >
-    <span
-      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white transform transition-transform duration-200 ${
-        checked ? "translate-x-4" : "translate-x-0"
-      }`}
-    />
-  </button>
-);
 
 export const HazeBloomPopover: React.FC<HazeBloomPopoverProps> = ({
   mode,
@@ -126,14 +110,14 @@ export const HazeBloomPopover: React.FC<HazeBloomPopoverProps> = ({
   const isActive = mode.includes("haze-bloom");
 
   return (
-    <Popover onClose={onClose} className="w-56" static={isStatic}>
+    <Popover onClose={onClose} className="w-64" static={isStatic}>
       <PopoverSection>
         <div className="flex items-center justify-between px-1 pb-1">
           <div>
-            <p className="text-[11px] font-semibold text-[var(--s-text)]">Haze & Bloom</p>
-            <p className="text-[9px] text-[var(--s-text-subtle)] mt-0.5">Film optical diffusion</p>
+            <p className="text-[12px] font-semibold text-[var(--s-text)]">Haze & Bloom</p>
+            <p className="text-[12px] text-[var(--s-text-subtle)] mt-0.5">Film optical diffusion</p>
           </div>
-          <ToggleSwitch checked={isActive} onChange={onToggle} />
+          <ToggleSwitch checked={isActive} onChange={onToggle} label="Haze and bloom" />
         </div>
       </PopoverSection>
 

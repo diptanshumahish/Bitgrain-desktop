@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect, useState } from "react";
-import { X, Layers, Info, Download, Trash2 } from "lucide-react";
+import { X, Layers, Info, Download, Trash2, BookOpen } from "lucide-react";
 import {
   useBatchProcessor,
   type BatchExportFormat,
@@ -97,13 +97,17 @@ export const BatchProcessor: React.FC<BatchProcessorProps> = ({ onClose }) => {
     (effect: EffectSelection) => {
       setSelectedEffect(effect);
       resetToPending();
+      const isBuiltIn = effect === "current" || PRESETS.some((preset) => preset.name === effect);
+      trackEvent("batch", "effect_selected", { details: { effect: isBuiltIn ? effect : "custom" } });
     },
     [resetToPending],
   );
 
   const handleFiles = useCallback(
     (files: FileList | null) => {
-      if (files) addFiles(Array.from(files));
+      if (!files) return;
+      addFiles(Array.from(files));
+      trackEvent("batch", "files_added", { details: { count: files.length } });
     },
     [addFiles],
   );
@@ -159,12 +163,22 @@ export const BatchProcessor: React.FC<BatchProcessorProps> = ({ onClose }) => {
               </div>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 transition-all"
-          >
-            <X size={14} strokeWidth={2} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <a
+              href="/docs/03-effects/09-batch-processing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2 h-7 rounded-md text-[11px] font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors no-underline"
+            >
+              <BookOpen size={12} /> Guide
+            </a>
+            <button
+              onClick={onClose}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 transition-all"
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -202,7 +216,10 @@ export const BatchProcessor: React.FC<BatchProcessorProps> = ({ onClose }) => {
               {(["png", "svg"] as BatchExportFormat[]).map((f) => (
                 <button
                   key={f}
-                  onClick={() => setFormat(f)}
+                  onClick={() => {
+                    setFormat(f);
+                    trackEvent("batch", "format_selected", { details: { format: f } });
+                  }}
                   className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-all ${format === f ? "bg-white text-zinc-800" : "text-zinc-400 hover:text-zinc-600"}`}
                 >
                   {f.toUpperCase()}
@@ -221,7 +238,10 @@ export const BatchProcessor: React.FC<BatchProcessorProps> = ({ onClose }) => {
             )}
             {isProcessing ? (
               <button
-                onClick={cancel}
+                onClick={() => {
+                  cancel();
+                  trackEvent("batch", "processing_cancelled", { details: { done_count: doneCount, total_count: totalCount } });
+                }}
                 className="px-3 py-1.5 rounded-lg text-[11px] font-semibold text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 transition-all"
               >
                 Cancel
@@ -242,7 +262,10 @@ export const BatchProcessor: React.FC<BatchProcessorProps> = ({ onClose }) => {
                 {pendingCount > 0 &&
                   (canBatch ? (
                     <button
-                      onClick={processAll}
+                      onClick={() => {
+                        processAll();
+                        trackEvent("batch", "processing_started", { details: { count: pendingCount, format } });
+                      }}
                       className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[11px] font-semibold bg-violet-600 text-white hover:bg-violet-500 transition-all"
                     >
                       <Layers size={12} strokeWidth={2.5} /> Process{" "}

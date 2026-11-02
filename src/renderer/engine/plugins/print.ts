@@ -1,4 +1,5 @@
 import type { ImagePlugin, TransformContext, TransformationResult } from '../types';
+import { tintGreyOnPaper } from '../tone/paper';
 
 const LUMA_R = 0.2126;
 const LUMA_G = 0.7152;
@@ -39,6 +40,10 @@ export const PhotocopyPlugin: ImagePlugin = {
       workingData[i + 3] = 255;
     }
 
+    if (ctx.paperColor) {
+      tintGreyOnPaper(colorData, ctx.paperColor);
+      workingData.set(colorData);
+    }
     return { colorData, workingData };
   },
 };

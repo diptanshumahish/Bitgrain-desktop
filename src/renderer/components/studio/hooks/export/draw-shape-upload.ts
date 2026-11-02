@@ -1,6 +1,6 @@
 import type { ShapeLayer, TapeStrips, UploadLayer } from "../../../../data/studioTypes";
 import { buildShapeSvg } from "./shape-svg";
-import { applyFlip, applyRotation, containFit, coverFit, loadImage } from "./image-helpers";
+import { applyFlip, applyRotation, drawFitted, loadImage } from "./image-helpers";
 import { drawComposedWithShadow, drawLayerWithShadow } from "./draw-layer-shadow";
 import { composeTornUploadCanvas } from "./draw-torn-upload";
 import { constructFilterString } from "../../../../utils/filter-utils";
@@ -55,11 +55,7 @@ const drawPlainUpload = (
   else ctx.rect(layer.x * s, layer.y * s, layer.width * s, layer.height * s);
   ctx.clip();
   ctx.imageSmoothingEnabled = !layer.bitgrainEffect;
-  if (layer.fit === "cover")
-    coverFit(ctx, drawSource, layer.x * s, layer.y * s, layer.width * s, layer.height * s);
-  else if (layer.fit === "contain")
-    containFit(ctx, drawSource, layer.x * s, layer.y * s, layer.width * s, layer.height * s);
-  else ctx.drawImage(drawSource, layer.x * s, layer.y * s, layer.width * s, layer.height * s);
+  drawFitted(ctx, drawSource, layer.fit, { x: layer.x * s, y: layer.y * s, width: layer.width * s, height: layer.height * s }, layer.crop);
   ctx.restore();
 };
 

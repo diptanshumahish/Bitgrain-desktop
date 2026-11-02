@@ -38,11 +38,6 @@ export function presetToQuery(state: ShareableState): string {
   return params.toString();
 }
 
-export function encodePresetToUrl(state: ShareableState): string {
-  const base = `${window.location.origin}${window.location.pathname}`;
-  return `${base}?${presetToQuery(state)}`;
-}
-
 export function editorPathForPreset(state: ShareableState): string {
   return `/editor?${presetToQuery(state)}`;
 }

@@ -1,9 +1,14 @@
 import { useEffect, useCallback } from "react";
 import posthog from "../lib/analytics";
-import { backendEnabled, backendOnlineSignal, callApi } from "../lib/api-client";
+import { backendEnabled, backendOnlineSignal } from "../lib/api-client";
 import { userSignal } from "./useAuth";
 import { useSignalValue } from "../lib/signal";
 import { accountCreditsSignal } from "../store/user-credits-store";
+import {
+  ensureAccountCredits,
+  resetAccountCredits,
+  storeAccountCredits,
+} from "../lib/account-credits/load-account-credits";
 
 export type PlanId = "free" | "pro";
 
@@ -17,7 +22,6 @@ export interface UserCredits {
   lastUpdated: number;
 }
 
-const STORAGE_KEY_ACCOUNT_CACHE = "bitgrain_a_cache";
 const STORAGE_KEY_IDENTITY = "bitgrain_user_id";
 
 const ADJECTIVES = ["Neon", "Silver", "Amber", "Obsidian", "Prism", "Cobalt", "Onyx", "Quartz", "Echo", "Velvet"];
@@ -40,6 +44,26 @@ const unlimitedCredits = (plan: PlanId = "free"): UserCredits => ({
   plan,
   lastUpdated: 0,
 });
+
+const EMPTY_ACCOUNT_CREDITS: UserCredits = {
+  png: 0,
+  svg: 0,
+  batchPng: 0,
+  batchSvg: 0,
+  plan: "free",
+  lastUpdated: 0,
+};
+
+const resolveCredits = (
+  isSignedIn: boolean,
+  isUnlimited: boolean,
+  accountCredits: UserCredits | null,
+): UserCredits => {
+  if (IS_DEV_MODE) return unlimitedCredits("pro");
+  if (isSignedIn && accountCredits) return accountCredits;
+  if (isUnlimited || !isSignedIn) return unlimitedCredits("free");
+  return EMPTY_ACCOUNT_CREDITS;
+};
 
 export const useUser = () => {
   const user = useSignalValue(userSignal);
@@ -65,43 +89,10 @@ export const useUser = () => {
 
   useEffect(() => {
     if (!user) {
-      accountCreditsSignal.value = null;
+      resetAccountCredits();
       return;
     }
-
-    const cached = localStorage.getItem(STORAGE_KEY_ACCOUNT_CACHE);
-    if (cached) {
-      try {
-        accountCreditsSignal.value = JSON.parse(cached);
-      } catch {
-        /* ignore corrupted cache */
-      }
-    }
-
-    callApi<{ png: number; svg: number; batch: number; plan?: string; planExpiresAt?: string }>("/api/credits").then((remote) => {
-      if (!remote) return;
-
-      const syncKey = `bg_synced_${user.id}`;
-      if (!sessionStorage.getItem(syncKey)) {
-        import("../utils/sync-projects").then(({ syncLocalProjectsToCloud }) => {
-          syncLocalProjectsToCloud().then(() => {
-            sessionStorage.setItem(syncKey, "true");
-          });
-        });
-      }
-
-      const updated: UserCredits = {
-        png: remote.png,
-        svg: remote.svg,
-        batchPng: remote.batch,
-        batchSvg: remote.batch,
-        plan: (remote.plan as UserCredits["plan"]) || "free",
-        planExpiresAt: remote.planExpiresAt ? new Date(remote.planExpiresAt).getTime() : undefined,
-        lastUpdated: Date.now(),
-      };
-      accountCreditsSignal.value = updated;
-      localStorage.setItem(STORAGE_KEY_ACCOUNT_CACHE, JSON.stringify(updated));
-    });
+    void ensureAccountCredits(user.id);
   }, [user]);
 
   const updateCredits = useCallback((
@@ -123,20 +114,13 @@ export const useUser = () => {
       planExpiresAt: planExpiresAt ?? prev?.planExpiresAt,
       lastUpdated: Date.now(),
     };
-    accountCreditsSignal.value = next;
-    localStorage.setItem(STORAGE_KEY_ACCOUNT_CACHE, JSON.stringify(next));
+    storeAccountCredits(next);
   }, [user]);
 
   const isUnlimited = IS_DEV_MODE || !backendEnabled || !backendOnline;
   const isAnon = !user && !isUnlimited;
 
-  // Anonymous users get unlimited watermarked web-resolution exports.
-  // Format and resolution gates live in config/plan-limits.ts, not in counts.
-  const credits: UserCredits = isUnlimited
-    ? unlimitedCredits(IS_DEV_MODE ? "pro" : "free")
-    : isAnon
-      ? unlimitedCredits("free")
-      : (accountCredits || { png: 0, svg: 0, batchPng: 0, batchSvg: 0, plan: "free", lastUpdated: 0 });
+  const credits: UserCredits = resolveCredits(!!user, isUnlimited, accountCredits);
 
   return {
     credits,

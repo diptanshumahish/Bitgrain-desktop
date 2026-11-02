@@ -36,6 +36,8 @@ import { emitModal } from "../../lib/event-bus";
 import { toggleTheme } from "../../store/global-theme-store";
 import { shapeToVectorLayer } from "../../utils/shape-to-vector";
 import { fitTextBox, findLayerById, replaceLayerById } from "../../utils/studio-layers";
+import { useCropHistory } from "./use-crop-history";
+import { growFixedTextToFit } from "../../components/studio/layers/text-fit-height";
 import type {
   TemplateDef,
   TemplatePage,
@@ -47,6 +49,7 @@ import type {
   InkPoint,
 } from "../../data/studioTypes";
 import type { FrameRect } from "./use-studio-pages";
+import type { DistributeAxis } from "./layer-order";
 import type { TextStyleVariable, NumberToken } from "../../data/design-kit-types";
 import type { BTGStudioProject } from "../../utils/btg-export";
 
@@ -123,6 +126,9 @@ export interface StudioWorkspaceProps {
   handleFlipLayerV: (id: string) => void;
   handleAlign: (a: string) => void;
   handleScatterCollage: () => void;
+  handleDistribute: (axis: DistributeAxis) => void;
+  handleBringToFront: (ids: string[]) => void;
+  handleSendToBack: (ids: string[]) => void;
   handleMatchPageToLayer: (id: string) => void;
   handleResizeToFormats: (formatIds: string[]) => void;
   handleAddMockupPage: (dataUrl: string, width: number, height: number) => void;
@@ -137,7 +143,8 @@ export interface StudioWorkspaceProps {
   handleSelectFramePage: (id: string) => void;
   handleAddPage: () => void;
   handleAddSizedPage: (width: number, height: number, name?: string) => void;
-  handleDuplicatePage: () => void;
+  handleDuplicatePage: (pageId: string) => void;
+  handleDeletePage: (id: string) => void;
   handleReorderLayersForPage: (pageId: string, layers: Layer[]) => void;
   handlePageMoveStart: () => void;
   handlePageMoveTo: (pageId: string, x: number, y: number) => void;
@@ -167,7 +174,7 @@ export const StudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
     handleAddText, handleAddShape, handleAddImage, handleAddAdjustment, handleAddPattern, handleAddVector, handleAddInk,
     handleDeleteLayer, handleDuplicate, handleGroup, handleUngroup,
     handleMoveLayerUp, handleMoveLayerDown, handleFlipLayerH, handleFlipLayerV,
-    handleAlign, handleScatterCollage, handleMatchPageToLayer, handleResizeToFormats, handleAddMockupPage,
+    handleAlign, handleScatterCollage, handleDistribute, handleMatchPageToLayer, handleResizeToFormats, handleAddMockupPage,
     handleLayerContextMenu, handleRestore,
     animation,
     pages, activePageId,
@@ -180,6 +187,7 @@ export const StudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
     handlePageFrameTransform,
     handleAddFrame, handleDeleteFrame, handleReparentFrame,
   } = props;
+  useCropHistory(pushHistory);
 
   const isLeftPanelCollapsed = useLeftPanelCollapsed();
   const isRightPanelCollapsed = useRightPanelCollapsed();
@@ -194,12 +202,40 @@ export const StudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
 
   const railLayer = selectedIds.length === 1 && selectedLayer ? selectedLayer : null;
 
-  const handleOpenMockup = () =>
+  const handleOpenMockup = () => {
+    trackEvent("studio", "mockup_opened");
     emitModal({ type: "mockup", template: effectiveTemplate, background, layers, image, width: canvasW, height: canvasH, selectedLayer, onAddPage: handleAddMockupPage });
+  };
+
+  const handleUndoClick = () => {
+    undo();
+    trackEvent("studio", "undo_used", { details: { source: "toolbar" } });
+  };
+
+  const handleRedoClick = () => {
+    redo();
+    trackEvent("studio", "redo_used", { details: { source: "toolbar" } });
+  };
+
+  const handleOpenResize = () => {
+    trackEvent("studio", "resize_modal_opened");
+    emitModal({ type: "resize", sourceWidth: canvasW, sourceHeight: canvasH, onApply: handleResizeToFormats });
+  };
+
+  const handleExpandPanel = (side: "left" | "right") => {
+    trackEvent("studio", "panel_expanded", { details: { side } });
+    if (side === "left") toggleLeftPanel();
+    else toggleRightPanel();
+  };
 
   const canvasPages = React.useMemo(
     () => pages.map((page) => (page.id === activePageId ? { ...page, layers } : page)),
     [pages, activePageId, layers],
+  );
+
+  const totalLayers = React.useMemo(
+    () => canvasPages.reduce((sum, page) => sum + page.layers.length, 0),
+    [canvasPages],
   );
 
   const selectedFramePage = selectedFramePageId
@@ -219,13 +255,13 @@ export const StudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
         workName={workName}
         onRenameWork={onRenameWork}
         onToggleAnimate={animation.toggleMode}
-        onUndo={undo}
-        onRedo={redo}
+        onUndo={handleUndoClick}
+        onRedo={handleRedoClick}
         onToggleDark={() => {
           trackEvent("studio", "theme_toggled", { details: { to: dark ? "light" : "dark" } });
           toggleTheme();
         }}
-        onResize={() => emitModal({ type: "resize", sourceWidth: canvasW, sourceHeight: canvasH, onApply: handleResizeToFormats })}
+        onResize={handleOpenResize}
         onMockup={handleOpenMockup}
         selectedLayer={selectedLayer}
         selectedIds={selectedIds}
@@ -254,6 +290,7 @@ export const StudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
                 width?: number | null;
                 height?: number | null;
               };
+              trackEvent("studio", "plugin_asset_inserted", { details: { method: "drag" } });
               emitInsertImage({
                 src: data.src,
                 name: data.name ?? "Image",
@@ -332,7 +369,7 @@ export const StudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
               >
                 <PanelRail
                   side="left"
-                  onExpand={toggleLeftPanel}
+                  onExpand={() => handleExpandPanel("left")}
                   footer={
                     <img
                       src="/bitgrainlogo.png"
@@ -391,11 +428,13 @@ export const StudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
             const target = findLayerById(layers, id);
             if (target?.type === "shape") {
               pushHistory();
+              trackEvent("studio", "shape_converted_to_vector");
               const vectorLayer = shapeToVectorLayer(target);
               setLayers((prev) => replaceLayerById(prev, id, vectorLayer));
             }
             setSelectedIds([id]);
             setVectorEditingId(id);
+            trackEvent("studio", "vector_edit_started", { details: { layer_type: target?.type ?? "unknown" } });
           }}
           onEndVectorEdit={() => setVectorEditingId(null)}
           onStartEdit={(id) => {
@@ -412,13 +451,14 @@ export const StudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
             }
             const layer = findLayerById(layers, id);
             const fit = layer?.type === "text" && layer.autoResize ? fitTextBox({ ...layer, content }) : null;
-            updateLayer(id, { content, richContent, ...(fit ?? {}) });
+            updateLayer(id, { content, richContent, ...(fit ?? growFixedTextToFit(layer, content)) });
+            trackEvent("studio", "text_edit_committed", { details: { char_count: content.length } });
           }}
           onCommitText={(id, content, richContent) => {
             ensureEditHistory();
             const layer = findLayerById(layers, id);
             const fit = layer?.type === "text" && layer.autoResize ? fitTextBox({ ...layer, content }) : null;
-            updateLayer(id, { content, richContent, ...(fit ?? {}) });
+            updateLayer(id, { content, richContent, ...(fit ?? growFixedTextToFit(layer, content)) });
           }}
           onMoveDelta={(id, dx, dy) =>
             setLayers((prev) =>
@@ -469,7 +509,7 @@ export const StudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
         </div>
 
         {isRightPanelCollapsed && (
-          <PanelRail side="right" onExpand={toggleRightPanel}>
+          <PanelRail side="right" onExpand={() => handleExpandPanel("right")}>
             {railLayer && (
               <>
                 <RailButton label="Duplicate" onClick={() => handleDuplicate([railLayer.id])}>
@@ -497,6 +537,8 @@ export const StudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
 
         {!isRightPanelCollapsed && (
         <RightPanel
+          pageLayers={layers}
+          pageBackground={background}
           selectedIds={selectedIds}
           selectedLayer={selectedLayer}
           editingId={editingId}
@@ -505,6 +547,7 @@ export const StudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
           onMatchPageToLayer={handleMatchPageToLayer}
           onAlign={handleAlign}
           onScatterCollage={handleScatterCollage}
+          onDistribute={handleDistribute}
           onGroup={handleGroup}
           onUngroup={handleUngroup}
           customFonts={customFonts}
@@ -524,6 +567,7 @@ export const StudioWorkspace: React.FC<StudioWorkspaceProps> = (props) => {
           selectedFramePage={selectedFramePage}
           selectedFramePageIndex={selectedFramePageIndex}
           totalPages={pages.length}
+          totalLayers={totalLayers}
           onRenamePage={handleRenamePage}
           onPageBackgroundChange={handlePageBackgroundChange}
           onPageResize={handlePageResize}

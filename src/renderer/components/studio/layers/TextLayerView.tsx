@@ -18,9 +18,15 @@ import {
   refreshSelection,
   showSavedHighlight,
   clearHighlight,
+  endSelectionPreview,
 } from "../rich-text/text-edit-bus";
 import { layerBaseStyle } from "../rich-text/rich-text-read";
 import { handleEditorClickSelection } from "../rich-text/text-click-select";
+import { handleFormatShortcut } from "../rich-text/format-shortcuts";
+import { NEW_TEXT_CONTENT } from "../../../utils/studio-layers";
+import { halfLeading } from "../../../utils/text-block-height";
+import { useSignalValue } from "../../../lib/signal";
+import { textPreviewSignal, withTextPreview } from "../fonts/text-preview-signal";
 
 interface TextLayerViewProps {
   layer: TextLayer;
@@ -42,10 +48,11 @@ interface TextLayerViewProps {
 }
 
 export const TextLayerView: React.FC<TextLayerViewProps> = ({
-  layer, selected, editing, scale, zIndex, hideSelectionUi, interactive,
+  layer: storedLayer, selected, editing, scale, zIndex, hideSelectionUi, interactive,
   onSelect, onStartEdit, onEndEdit, onCommitText, onMoveDelta, onMoveEnd,
   onResizeDelta, onResizeEnd, onContextMenu,
 }) => {
+  const layer = withTextPreview(storedLayer, useSignalValue(textPreviewSignal));
   const wrapRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLDivElement>(null);
   const wasSelectedOnPress = useRef(false);
@@ -58,14 +65,15 @@ export const TextLayerView: React.FC<TextLayerViewProps> = ({
 
   const effects = layer.effects ?? [];
   const baseStyle = buildBaseTextStyle(layer);
-  const firstLineLeading = ((layer.lineHeight - 1) * layer.fontSize) / 2;
+  const leading = halfLeading(layer.fontSize, layer.lineHeight);
+  const leadingTrim = { marginTop: -leading, marginBottom: -leading };
 
-  const baseRef = useRef(layerBaseStyle(layer));
+  const baseRef = useRef(layerBaseStyle(storedLayer));
   const commitTextRef = useRef(onCommitText);
   const endEditRef = useRef(onEndEdit);
 
   useEffect(() => {
-    baseRef.current = layerBaseStyle(layer);
+    baseRef.current = layerBaseStyle(storedLayer);
     commitTextRef.current = onCommitText;
     endEditRef.current = onEndEdit;
   });
@@ -79,6 +87,7 @@ export const TextLayerView: React.FC<TextLayerViewProps> = ({
   const endNow = useCallback(() => {
     const el = ref.current;
     if (!el) return;
+    endSelectionPreview();
     endEditRef.current(normalizeText(el), cleanRichHtml(el.innerHTML));
   }, []);
 
@@ -104,7 +113,7 @@ export const TextLayerView: React.FC<TextLayerViewProps> = ({
     }
     const range = document.createRange();
     range.selectNodeContents(el);
-    range.collapse(false);
+    if (layer.content !== NEW_TEXT_CONTENT) range.collapse(false);
     const sel = window.getSelection();
     sel?.removeAllRanges();
     sel?.addRange(range);
@@ -137,7 +146,7 @@ export const TextLayerView: React.FC<TextLayerViewProps> = ({
 
   useEffect(() => {
     if (editing && ref.current) updateEditorBase(ref.current, baseRef.current);
-  }, [editing, layer.color, layer.fontFamily, layer.fontWeight, layer.fontStyle, layer.fontSize]);
+  }, [editing, layer.color, layer.fontFamily, layer.fontWeight, layer.fontStyle, layer.fontSize, layer.textDecoration, layer.textTransform, layer.letterSpacing]);
 
   return (
     <div
@@ -154,7 +163,7 @@ export const TextLayerView: React.FC<TextLayerViewProps> = ({
         cursor: editing ? "text" : selected ? "move" : "default",
         outline:
           showChrome || editing
-            ? `${1 / scale}px solid ${editing ? "#3b82f6" : "var(--s-accent)"}`
+            ? `${1 / scale}px solid var(--s-canvas-selection)`
             : "none",
         outlineOffset: 0,
         mixBlendMode: layer.blendMode as React.CSSProperties["mixBlendMode"],
@@ -174,7 +183,7 @@ export const TextLayerView: React.FC<TextLayerViewProps> = ({
         onStartEdit();
       }}
       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(e); }}
-      onPointerDown={drag.onPointerDown}
+      onPointerDown={editing ? (e) => e.stopPropagation() : drag.onPointerDown}
       onPointerMove={drag.onPointerMove}
       onPointerUp={drag.onPointerUp}
     >
@@ -184,10 +193,12 @@ export const TextLayerView: React.FC<TextLayerViewProps> = ({
             ref={ref}
             contentEditable
             suppressContentEditableWarning
+            className="selection:bg-[var(--s-canvas-selection-fill)] selection:text-[var(--text-edit-ink)]"
             onFocus={clearHighlight}
             onBlur={showSavedHighlight}
             onClick={(e) => handleEditorClickSelection(e.detail, e.currentTarget)}
             onKeyDown={(e) => {
+              if (handleFormatShortcut(e)) return;
               if (e.key === "Escape") {
                 e.preventDefault();
                 endNow();
@@ -199,7 +210,8 @@ export const TextLayerView: React.FC<TextLayerViewProps> = ({
             }}
             style={{
               ...baseStyle,
-              marginTop: -firstLineLeading,
+              ...leadingTrim,
+              ["--text-edit-ink" as string]: layer.color,
               background: "none",
               WebkitBackgroundClip: "unset",
               WebkitTextFillColor: layer.gradientText?.enabled ? "unset" : undefined,
@@ -214,7 +226,7 @@ export const TextLayerView: React.FC<TextLayerViewProps> = ({
         ) : layer.autoResize ? (
           <div
             ref={ref}
-            style={{ ...baseStyle, marginTop: -firstLineLeading, userSelect: "none", pointerEvents: "none" }}
+            style={{ ...baseStyle, ...leadingTrim, userSelect: "none", pointerEvents: "none" }}
             dangerouslySetInnerHTML={
               layer.richContent
                 ? { __html: layer.richContent }
@@ -226,7 +238,7 @@ export const TextLayerView: React.FC<TextLayerViewProps> = ({
             ref={ref}
             style={{
               ...baseStyle,
-              marginTop: -firstLineLeading,
+              marginTop: -leading,
               fontSize: layer.fontSize * scale,
               letterSpacing: layer.letterSpacing * scale,
               ...(effects.length ? { textShadow: buildShadowCss(effects, scale) } : {}),

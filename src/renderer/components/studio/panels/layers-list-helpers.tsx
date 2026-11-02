@@ -121,7 +121,7 @@ export const ChildRow: React.FC<ChildRowProps> = ({
         onClick={(e) => onSelect(layer.id, e.metaKey || e.ctrlKey || e.shiftKey)}
         onContextMenu={(e) => onContextMenu(e, layer.id)}
         className={`group flex items-center gap-2 mx-1 rounded-md py-1 pr-1.5 cursor-pointer transition-colors duration-100 ${
-          isSelected ? "bg-[var(--s-accent-soft)]" : "hover:bg-[var(--s-bg-input)]"
+          isSelected ? "bg-[var(--s-bg-input-hover)]" : "hover:bg-[var(--s-bg-input)]"
         }`}
         style={{ paddingLeft: `${INDENT_BASE_PX + depth * INDENT_STEP_PX}px` }}
       >

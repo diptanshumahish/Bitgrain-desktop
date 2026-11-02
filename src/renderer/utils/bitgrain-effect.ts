@@ -11,7 +11,6 @@ export {
   BITGRAIN_GROUP_ORDER,
   findEffectSpec,
   defaultParamsFor,
-  type BitgrainParamSpec,
 } from "./bitgrain-effect-core";
 
 const MAX_PROCESS_DIMENSION = 1200;

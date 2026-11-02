@@ -16,8 +16,13 @@ import { processMainThread } from "./main-thread-process";
 import { usePreviewWorker, usePreviewImage } from "./use-preview-worker";
 import { previewLoadingSignal } from "../../store/image-store";
 import { applyPrintFinishToCanvas, buildPrintFinishOptions } from "../../engine/print-finish";
-import { asciiSurface } from "./render-helpers";
+import { effectiveAsciiTone, resolveSurface } from "./paper-surface";
 import { orientRamp, ASCII_DETAILED } from "../../engine/plugins/ascii";
+import { buildPreviewParams } from "./build-preview-params";
+import { HALFTONE_DEFAULTS, HALFTONE_LEGACY_CELL } from "../../engine/plugins/halftone/halftone-defaults";
+import { linesFromSnapshot } from "../../engine/plugins/halftone/halftone-legacy";
+import { applyMaskOutputs } from "../../modules/grading/editor/apply-editor-mask";
+import { needsBrushSync, syncWorkerBrushes } from "../../modules/grading/editor/worker-brush-sync";
 
 export interface OutputPipelineRefs {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -61,8 +66,9 @@ export const useOutputPipeline = (
     const { colorData, charData, ditherMask, cols, rows, charWidth, charHeight, isDither } = result;
     const current = propsRef.current;
     const lastMode = Array.isArray(current.mode) ? current.mode[current.mode.length - 1] : current.mode;
-    const isCharSurface = lastMode === "ascii" || lastMode === "braille";
-    const charFgBg = lastMode === "braille" ? asciiSurface("dark") : asciiSurface(current.asciiTone ?? "dark");
+    const surface = resolveSurface({
+      lastMode, asciiTone: current.asciiTone, paperColor: current.paperColor, fgColor: current.fgColor, bgColor: current.bgColor,
+    });
 
     current.onResult?.({
       colorData: colorData ?? undefined,
@@ -81,7 +87,7 @@ export const useOutputPipeline = (
       renderDitherBatch(
         ctx, canvas, bufCanvasRef,
         ditherMask, colorData,
-        cols, rows, current.isColor, current.palette as Palette | undefined, current.fgColor, current.bgColor,
+        cols, rows, current.isColor, current.palette as Palette | undefined, surface.fg, surface.bg,
       );
     } else if (colorData && !charData) {
       renderBitmap(ctx, canvas, bufCanvasRef, colorData, cols, rows);
@@ -91,16 +97,18 @@ export const useOutputPipeline = (
         charData, colorData,
         cols, rows, charWidth, charHeight,
         current.isColor,
-        isCharSurface ? charFgBg.fg : current.fgColor,
-        isCharSurface ? charFgBg.bg : current.bgColor,
+        surface.fg,
+        surface.bg,
         lastMode === "ascii",
       );
     }
 
+    if (!current.compact) applyMaskOutputs(canvas, result);
+
     if (!current.compact && current.printFinish && lastMode !== "ascii" && lastMode !== "braille") {
       applyPrintFinishToCanvas(
         canvas,
-        buildPrintFinishOptions(current.printFinishStrength ?? 0.85, current.bgColor),
+        buildPrintFinishOptions(current.printFinishStrength ?? 0.85, surface.bg, current.isColor === false),
       );
     }
 
@@ -152,7 +160,8 @@ export const useOutputPipeline = (
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = 0;
       const current = propsRef.current;
-      const asciiCharset = orientRamp(current.asciiCharset || ASCII_DETAILED, current.asciiTone ?? "dark");
+      const asciiTone = effectiveAsciiTone(current.asciiTone, current.paperColor);
+      const asciiCharset = orientRamp(current.asciiCharset || ASCII_DETAILED, asciiTone);
       const asciiDensity = current.asciiDensity ?? 1;
 
       if (current.compact) {
@@ -180,53 +189,15 @@ export const useOutputPipeline = (
         pendingCacheKeyRef.current = key;
       }
 
-      const params = {
-        resolution: current.resolution,
-        contrast: current.contrast,
-        brightness: current.brightness,
-        saturation: current.saturation,
-        modes: current.mode,
-        ditherMethod: current.ditherMethod,
-        ditherFactor: current.ditherFactor ?? 1,
-        isColor: current.isColor,
-        asciiCharset,
-        asciiDensity,
-        asciiEdges: current.asciiEdges,
-        asciiEdgeThreshold: current.asciiEdgeThreshold,
-        contourLevels: current.contourLevels,
-        contourFill: current.contourFill,
-        noise: current.noise ?? 0,
-        hue: current.hue ?? 0,
-        palette: current.palette,
-        lutId: current.lutId,
-        hazeIntensity: current.hazeIntensity ?? 0.3,
-        bloomIntensity: current.bloomIntensity ?? 0.4,
-        bloomThreshold: current.bloomThreshold ?? 0.7,
-        hazeWarmth: current.hazeWarmth ?? 0.6,
-        halftoneCell: current.halftoneCell ?? 2,
-        halftoneAngle: current.halftoneAngle ?? 45,
-        halftoneStyle: current.halftoneStyle ?? "mono",
-        halftoneShape: current.halftoneShape ?? "round",
-        halftoneInvert: current.halftoneInvert ?? false,
-        halftoneIntensity: current.halftoneIntensity ?? 1,
-        halftoneSharpness: current.halftoneSharpness ?? 60,
-        popartCell: current.popartCell,
-        popartAngle: current.popartAngle,
-        popartThreshold: current.popartThreshold,
-        popartGrain: current.popartGrain,
-        popartSpatter: current.popartSpatter,
-        popartInk: current.popartInk,
-        popartPaper: current.popartPaper,
-        inkwashDetail: current.inkwashDetail,
-        inkwashBands: current.inkwashBands,
-        inkwashBleed: current.inkwashBleed,
-        inkwashInk: current.inkwashInk,
-        inkwashPaper: current.inkwashPaper,
-        mangaCell: current.mangaCell,
-        mangaAngle: current.mangaAngle,
-        mangaLineWeight: current.mangaLineWeight,
-        mangaContrast: current.mangaContrast,
-      };
+      const params = buildPreviewParams(current, asciiCharset, asciiDensity);
+
+      const worker = workerRef.current;
+      if (worker && bitmapSentRef.current && needsBrushSync(worker, current.masks)) {
+        syncWorkerBrushes(worker, current.masks)
+          .then(() => scheduleProcessRef.current())
+          .catch((err) => console.error("mask brush sync failed:", err));
+        return;
+      }
 
       if (workerRef.current && bitmapSentRef.current) {
         if (processingRef.current) {
@@ -239,59 +210,25 @@ export const useOutputPipeline = (
         processMainThread(
           { imgCacheRef, canvasRef, pCanvasRef, bufCanvasRef, pendingCacheKeyRef },
           {
-            image: current.image,
-            resolution: current.resolution,
-            contrast: current.contrast,
-            brightness: current.brightness,
-            saturation: current.saturation,
-            mode: current.mode,
-            ditherMethod: current.ditherMethod,
+            ...current,
             ditherFactor: current.ditherFactor ?? 1,
-            isColor: current.isColor,
             asciiCharset,
-            asciiTone: current.asciiTone ?? "dark",
+            asciiTone,
             asciiDensity,
-            asciiEdges: current.asciiEdges,
-            asciiEdgeThreshold: current.asciiEdgeThreshold,
-            contourLevels: current.contourLevels,
-            contourFill: current.contourFill,
             noise: current.noise ?? 0,
             hue: current.hue ?? 0,
-            printFinish: current.printFinish,
-            printFinishStrength: current.printFinishStrength,
-            palette: current.palette,
-            lutId: current.lutId,
-            fgColor: current.fgColor,
-            bgColor: current.bgColor,
             hazeIntensity: current.hazeIntensity ?? 0.3,
             bloomIntensity: current.bloomIntensity ?? 0.4,
             bloomThreshold: current.bloomThreshold ?? 0.7,
             hazeWarmth: current.hazeWarmth ?? 0.6,
-            halftoneCell: current.halftoneCell ?? 2,
-            halftoneAngle: current.halftoneAngle ?? 45,
-            halftoneStyle: current.halftoneStyle ?? "mono",
-            halftoneShape: current.halftoneShape ?? "round",
-            halftoneInvert: current.halftoneInvert ?? false,
-            halftoneIntensity: current.halftoneIntensity ?? 1,
-            halftoneSharpness: current.halftoneSharpness ?? 60,
-            popartCell: current.popartCell,
-            popartAngle: current.popartAngle,
-            popartThreshold: current.popartThreshold,
-            popartGrain: current.popartGrain,
-            popartSpatter: current.popartSpatter,
-            popartInk: current.popartInk,
-            popartPaper: current.popartPaper,
-            inkwashDetail: current.inkwashDetail,
-            inkwashBands: current.inkwashBands,
-            inkwashBleed: current.inkwashBleed,
-            inkwashInk: current.inkwashInk,
-            inkwashPaper: current.inkwashPaper,
-            mangaCell: current.mangaCell,
-            mangaAngle: current.mangaAngle,
-            mangaLineWeight: current.mangaLineWeight,
-            mangaContrast: current.mangaContrast,
-            onResult: current.onResult,
-            onRender: current.onRender,
+            halftoneCell: current.halftoneCell ?? HALFTONE_LEGACY_CELL,
+            halftoneLines: linesFromSnapshot(current),
+            halftoneAngle: current.halftoneAngle ?? HALFTONE_DEFAULTS.angle,
+            halftoneStyle: current.halftoneStyle ?? HALFTONE_DEFAULTS.style,
+            halftoneShape: current.halftoneShape ?? HALFTONE_DEFAULTS.shape,
+            halftoneInvert: current.halftoneInvert ?? HALFTONE_DEFAULTS.invert,
+            halftoneIntensity: current.halftoneIntensity ?? HALFTONE_DEFAULTS.intensity,
+            halftoneSharpness: current.halftoneSharpness ?? HALFTONE_DEFAULTS.sharpness,
           },
         );
         if (drew && previewLoadingSignal.value) previewLoadingSignal.value = false;
@@ -333,14 +270,15 @@ export const useOutputPipeline = (
     props.asciiEdges, props.asciiEdgeThreshold,
     props.contourLevels, props.contourFill,
     props.noise, props.hue, props.printFinish, props.printFinishStrength,
-    props.palette, props.lutId, props.fgColor, props.bgColor,
+    props.palette, props.lutId, props.fgColor, props.bgColor, props.paperColor,
     props.hazeIntensity, props.bloomIntensity, props.bloomThreshold, props.hazeWarmth,
-    props.halftoneCell, props.halftoneAngle, props.halftoneStyle, props.halftoneShape,
-    props.halftoneInvert, props.halftoneIntensity, props.halftoneSharpness,
+    props.halftoneCell, props.halftoneLines, props.halftoneAngle, props.halftoneStyle, props.halftoneShape,
+    props.halftoneInvert, props.halftoneIntensity, props.halftoneSharpness, props.halftoneGrit,
     props.popartCell, props.popartAngle, props.popartThreshold, props.popartGrain, props.popartSpatter,
     props.popartInk, props.popartPaper,
     props.inkwashDetail, props.inkwashBands, props.inkwashBleed, props.inkwashInk, props.inkwashPaper,
     props.mangaCell, props.mangaAngle, props.mangaLineWeight, props.mangaContrast,
+    props.grade, props.masks, props.overlayMaskId,
   ]);
 
   return { workerRef, bufCanvasRef };

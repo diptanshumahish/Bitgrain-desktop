@@ -1,7 +1,8 @@
-import type { AsciiTone, Palette, TransformMode } from "../../engine/types";
+import type { Palette, TransformMode } from "../../engine/types";
 import type { WorkerResult } from "./types";
-import { asciiSurface } from "./render-helpers";
-import { captureSnapshot } from "../../store/transform-store";
+import { resolveSurface } from "./paper-surface";
+import { glyphInk, isLightPaper } from "./ascii-ink";
+import { captureSnapshot, type TransformSnapshot } from "../../store/transform-store";
 import { imageSignal } from "../../store/image-store";
 import { isBandSplittable } from "../../engine/parallel/band-splittable";
 import { runBandedPooled } from "../../engine/parallel/band-pool";
@@ -9,6 +10,10 @@ import { bitmapWorkingGrid } from "../../engine/parallel/export-grid";
 import type { BandTransformSpec } from "../../engine/parallel/band-runner";
 import { snapshotToWorkerParams } from "./worker-params";
 import { paintWorkerResult, type PaintColors } from "./paint-worker-result";
+import { masksSignal } from "../../modules/grading/editor/editor-mask-store";
+import { buildWorkerMaskParams } from "../../modules/grading/editor/worker-mask-params";
+import { applyMaskOutputs } from "../../modules/grading/editor/apply-editor-mask";
+import { syncWorkerBrushes } from "../../modules/grading/editor/worker-brush-sync";
 
 export interface ExportRenderResult {
   canvas: HTMLCanvasElement;
@@ -55,6 +60,7 @@ const runExportWorker = (params: Record<string, unknown>): Promise<WorkerResult>
         const blob = await res.blob();
         const bitmap = await createImageBitmap(blob);
         worker.postMessage({ type: "setImage", bitmap }, [bitmap]);
+        await syncWorkerBrushes(worker, masksSignal.value);
         worker.postMessage({ type: "process", params });
       } catch (err) {
         cleanup();
@@ -124,14 +130,18 @@ const runBandedExport = async (
 export const renderForExport = async (
   exportParams: PaintColors,
   renderScale = 1,
+  snap: TransformSnapshot = captureSnapshot(),
 ): Promise<ExportRenderResult> => {
-  const snap = captureSnapshot();
   const { params, renderedAtScale } = snapshotToWorkerParams(snap, renderScale);
   const modes = params.modes as TransformMode[];
-  const result = isBandSplittable(modes)
+  const maskParams = buildWorkerMaskParams(masksSignal.value, null);
+  // Banded export has no mask stage, so any active grading mask routes the export
+  // through the single transform worker, which applies masks exactly as preview does.
+  const result = isBandSplittable(modes) && maskParams.masks.length === 0
     ? await runBandedExport(params, modes)
-    : await runExportWorker(params);
+    : await runExportWorker({ ...params, ...maskParams });
   const canvas = paintWorkerResult(result, snap, exportParams);
+  applyMaskOutputs(canvas, result);
   return { canvas, renderedAtScale };
 };
 
@@ -141,12 +151,13 @@ const escapeXml = (ch: string): string =>
 // Emit real <text> glyphs (one per cell) so ASCII exports are tiny, crisp, and pen-plotter ready.
 const asciiToSvg = (
   result: WorkerResult,
-  tone: AsciiTone,
-  isColor: boolean,
+  snap: TransformSnapshot,
   transparent: boolean,
 ): string => {
   const { charData, colorData, cols, rows, charWidth, charHeight } = result;
-  const { fg, bg } = asciiSurface(tone);
+  const isColor = snap.isColor;
+  const { fg, bg } = resolveSurface({ lastMode: "ascii", asciiTone: snap.asciiTone, paperColor: snap.paperColor, fgColor: "", bgColor: "" });
+  const lightPaper = isLightPaper(bg);
   const w = cols * charWidth;
   const h = rows * charHeight;
   const fontPx = Math.max(6, Math.round(charHeight * 0.8));
@@ -170,7 +181,7 @@ const asciiToSvg = (
         let fill = "";
         if (isColor && colorData) {
           const ci = idx * 4;
-          fill = ` fill="rgb(${colorData[ci]},${colorData[ci + 1]},${colorData[ci + 2]})"`;
+          fill = ` fill="${glyphInk(colorData[ci], colorData[ci + 1], colorData[ci + 2], lightPaper)}"`;
         }
         out.push(
           `<text x="${x * charWidth + ox}" y="${y * charHeight + oy}"${fill}>${escapeXml(ch)}</text>`,
@@ -187,5 +198,5 @@ export const renderAsciiSvgForExport = async (transparent: boolean): Promise<str
   const snap = captureSnapshot();
   const { params } = snapshotToWorkerParams(snap, 1);
   const result = await runExportWorker(params);
-  return asciiToSvg(result, snap.asciiTone, snap.isColor, transparent);
+  return asciiToSvg(result, snap, transparent);
 };

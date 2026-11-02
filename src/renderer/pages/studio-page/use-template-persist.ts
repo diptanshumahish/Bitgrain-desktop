@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { callApi } from "../../lib/api-client";
+import { loadTemplateForEditing, saveTemplateDraft } from "./template-draft-api";
 import { renderStudioToDataUrl } from "../../components/studio/hooks/useStudioExport";
 import type { ApiTemplate } from "../../lib/templates-api";
 import { toTemplateDef } from "../../lib/templates-api";
@@ -14,6 +14,8 @@ import type {
 
 const TARGET_LONGEST_SIDE = 1080;
 const THUMB_W = 400;
+
+export const TEMPLATE_DRAFT_SAVED_EVENT = "bg:template-draft-saved";
 
 export interface TemplateMetadata {
   name: string;
@@ -72,6 +74,7 @@ export const useTemplatePersist = ({
   const [lastError, setLastError] = useState<string | null>(null);
 
   const metadataRef = useRef(metadata);
+  const featuredRef = useRef(false);
   const onLoadedRef = useRef(onLoaded);
   const onTemplateLoadedRef = useRef(onTemplateLoaded);
 
@@ -90,12 +93,14 @@ export const useTemplatePersist = ({
   useEffect(() => {
     if (!templateId) return;
     let cancelled = false;
-    callApi<ApiTemplate>(`/api/admin/templates/${templateId}`).then((result) => {
+    loadTemplateForEditing(templateId).then((editable) => {
       if (cancelled) return;
-      if (!result) {
+      if (!editable) {
         setLoading(false);
         return;
       }
+      const result = editable.template;
+      featuredRef.current = result.featured;
 
       onTemplateLoadedRef.current?.(result);
       const loaded = scaleTemplateToMin(toTemplateDef(result), TARGET_LONGEST_SIDE);
@@ -176,6 +181,8 @@ export const useTemplatePersist = ({
       })),
       overlay: template.overlay,
       tags: meta.tags,
+      description: template.description,
+      useCases: template.useCases,
       addedAt: template.addedAt,
     };
 
@@ -186,23 +193,17 @@ export const useTemplatePersist = ({
       data,
       thumbnail,
       isFree: meta.isFree,
+      featured: featuredRef.current,
       sortOrder: meta.sortOrder,
     };
 
     try {
-      const result = await callApi<ApiTemplate>(
-        `/api/admin/templates/${templateId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-        30_000,
-      );
+      const result = await saveTemplateDraft(templateId, body);
       if (!result) {
-        setLastError("Failed to save template");
+        setLastError("Failed to save draft");
       } else {
         markClean();
+        document.dispatchEvent(new CustomEvent(TEMPLATE_DRAFT_SAVED_EVENT, { detail: result }));
       }
     } catch (err) {
       setLastError(err instanceof Error ? err.message : "Failed to save template");

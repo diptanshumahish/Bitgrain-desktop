@@ -2,6 +2,7 @@ import type { AdjustmentLayer, BitgrainEffect } from "../../../../../data/studio
 import { applyBitgrainEffectAsync } from "../../../../../utils/bitgrain-effect";
 import { ADJUSTMENT_WORKING_MAX } from "../../effect-working-resolution";
 import { isPixelGridEffect, planEffectExport } from "./effect-export-plan";
+import { gradeCanvasInPlace } from "../../../../../modules/grading/studio/grade-canvas";
 
 interface PixelRegion {
   x: number;
@@ -60,6 +61,7 @@ export const processAdjustmentRegion = async (
   );
   const scaleToTarget = effect && isPixelGridEffect(effect) ? scaleToPreview : 1;
   const crop = cropRegion(canvas, region, scaleToTarget);
+  if (crop) gradeCanvasInPlace(crop, layer.colorGrade);
   if (!crop || !effect) return crop;
   return runEffect(crop, effect, previewLongEdge);
 };

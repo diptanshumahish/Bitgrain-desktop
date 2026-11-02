@@ -1,0 +1,7 @@
+export const API_DEFAULT_TIMEOUT_MS = 15000;
+export const API_AUTH_TIMEOUT_MS = 15000;
+export const API_LOGIN_TIMEOUT_MS = 20000;
+export const API_SIGNUP_TIMEOUT_MS = 25000;
+export const API_HEALTH_PROBE_TIMEOUT_MS = 20000;
+export const API_GET_RETRY_ATTEMPTS = 2;
+export const API_RETRY_BASE_DELAY_MS = 800;

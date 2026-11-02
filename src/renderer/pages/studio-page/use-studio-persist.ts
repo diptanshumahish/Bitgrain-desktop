@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { saveStudioAutosave, loadStudioAutosave } from "../../utils/studio-persist";
-import type { StudioAutosave, StudioAutosavePage } from "../../utils/studio-persist";
-import { saveWork, loadWorks, getWorkById } from "../../store/works-store";
+import type { StudioAutosave } from "../../utils/studio-persist";
+import { saveWork, loadWorks } from "../../store/works-store";
 import type { Work } from "../../types/work";
 import { renderStudioToDataUrl } from "../../components/studio/hooks/useStudioExport";
 import { trackEvent as trackPosthog } from "../../lib/analytics";
@@ -9,8 +9,11 @@ import { trackEvent } from "../../lib/tracker";
 import { markClean } from "../../store/studio-save-status";
 import { readInstance, writeInstance } from "../../store/workspace-store";
 import { setActiveTabTitle } from "../../store/document-tabs-store";
+import { canPersistWork } from "../../store/studio-load-state";
+import type { CloudSyncOutcome } from "../../lib/save-to-cloud";
 import type { Layer, TemplateDef, TemplatePage } from "../../data/studioTypes";
-import { makePageId } from "../../data/templates/template-pages";
+import { normalizePages, serializePages } from "./serialize-pages";
+import { useWorkLoader } from "./use-work-loader";
 
 const THUMB_W = 400;
 
@@ -26,7 +29,7 @@ interface StudioDoc {
   canvasH: number;
   image: string | null;
   layers: unknown[];
-  pages: StudioAutosavePage[];
+  pages: ReturnType<typeof serializePages>;
   activePageId: string;
 }
 
@@ -54,67 +57,25 @@ interface UseStudioPersistArgs {
   setWorkName: (n: string) => void;
 }
 
-const normalizePages = (
-  rawPages: unknown,
-  fallbackLayers: Layer[],
-  fallbackBackground: string,
-  fallbackWidth: number,
-  fallbackHeight: number,
-): TemplatePage[] => {
-  if (Array.isArray(rawPages) && rawPages.length > 0) {
-    return rawPages.map((page, index) => {
-      const source = page as Partial<TemplatePage>;
-      return {
-        id: source.id ?? makePageId(index + 1),
-        name: source.name ?? `Page ${index + 1}`,
-        layers: Array.isArray(source.layers) ? (source.layers as Layer[]) : [],
-        background: source.background ?? fallbackBackground,
-        backgroundVar: source.backgroundVar,
-        x: source.x ?? 0,
-        y: source.y ?? 0,
-        width: source.width ?? fallbackWidth,
-        height: source.height ?? fallbackHeight,
-        image: source.image ?? null,
-        clip: source.clip,
-        animation: source.animation,
-      };
-    });
-  }
-  return [
-    {
-      id: makePageId(1),
-      name: "Page 1",
-      layers: fallbackLayers,
-      background: fallbackBackground,
-      x: 0,
-      y: 0,
-      width: fallbackWidth,
-      height: fallbackHeight,
-    },
-  ];
-};
-
 export interface UseStudioPersistResult {
   showRestoreToast: boolean;
   setShowRestoreToast: (v: boolean) => void;
   savedData: StudioAutosave | null;
-  handleManualSave: () => Promise<void>;
+  handleManualSave: () => Promise<CloudSyncOutcome>;
   handleRestore: () => void;
+  retryLoad: () => Promise<void>;
 }
 
-const toStudioPages = (pages: TemplatePage[]): StudioAutosavePage[] =>
-  pages.map((page) => ({
-    id: page.id,
-    name: page.name,
-    layers: page.layers,
-    background: page.background,
-    x: page.x,
-    y: page.y,
-    width: page.width,
-    height: page.height,
-    image: page.image ?? null,
-    animation: page.animation,
-  }));
+const renderThumbnail = async (
+  template: TemplateDef, background: string, layers: Layer[], image: string | null,
+): Promise<string | null> => {
+  const thumbH = Math.round((THUMB_W * template.height) / template.width);
+  try {
+    return await renderStudioToDataUrl(template, background, layers, image, THUMB_W, thumbH);
+  } catch {
+    return null;
+  }
+};
 
 export const useStudioPersist = ({
   workId, instanceId, template, layers, background, pages, activePageId, canvasW, canvasH, image,
@@ -132,13 +93,9 @@ export const useStudioPersist = ({
     readInstance<StudioDoc>(instanceId).then((loaded) => {
       if (cancelled || !loaded) return;
       const doc = loaded.doc;
-      const restoredPages = normalizePages(
-        doc.pages,
-        doc.layers as Layer[],
-        doc.background,
-        doc.canvasW,
-        doc.canvasH,
-      );
+      const restoredPages = normalizePages(doc.pages, {
+        layers: doc.layers as Layer[], background: doc.background, width: doc.canvasW, height: doc.canvasH,
+      });
       setPages(restoredPages);
       setActivePageId(doc.activePageId ?? restoredPages[0].id);
       setCanvasW(doc.canvasW);
@@ -156,47 +113,37 @@ export const useStudioPersist = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instanceId]);
 
-  useEffect(() => {
-    if (instanceId) return;
-    if (workId) {
-      getWorkById(workId).then((work) => {
-        if (!work) return;
-        const restoredPages = normalizePages(
-          work.pages,
-          work.layers as Layer[],
-          work.background,
-          work.canvasW,
-          work.canvasH,
-        );
-        setPages(restoredPages);
-        setActivePageId(restoredPages[0].id);
-        setCanvasW(work.canvasW);
-        setCanvasH(work.canvasH);
-        if (work.image) setImage(work.image);
-        workNameRef.current = work.name;
-        setWorkName(work.name);
-        workCreatedAtRef.current = work.createdAt;
-      });
-      return;
-    }
-    loadStudioAutosave().then((saved) => {
-      if (saved) {
-        setSavedData(saved);
-        setShowRestoreToast(true);
-      }
+  const applyLoadedWork = (work: Work): void => {
+    const restoredPages = normalizePages(work.pages, {
+      layers: work.layers as Layer[], background: work.background, width: work.canvasW, height: work.canvasH,
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setPages(restoredPages);
+    setActivePageId(restoredPages[0].id);
+    setCanvasW(work.canvasW);
+    setCanvasH(work.canvasH);
+    if (work.image) setImage(work.image);
+    workNameRef.current = work.name;
+    setWorkName(work.name);
+    workCreatedAtRef.current = work.createdAt;
+  };
+
+  const retryLoad = useWorkLoader({ workId, onWorkLoaded: applyLoadedWork });
+
+  useEffect(() => {
+    if (workId || instanceId) return;
+    loadStudioAutosave().then((saved) => {
+      if (!saved) return;
+      setSavedData(saved);
+      setShowRestoreToast(true);
+    });
   }, [workId]);
 
   const handleRestore = useCallback(() => {
     if (!savedData) return;
-    const restoredPages = normalizePages(
-      savedData.pages,
-      savedData.layers as Layer[],
-      savedData.background,
-      savedData.canvasW,
-      savedData.canvasH,
-    );
+    const restoredPages = normalizePages(savedData.pages, {
+      layers: savedData.layers as Layer[], background: savedData.background,
+      width: savedData.canvasW, height: savedData.canvasH,
+    });
     setPages(restoredPages);
     setActivePageId(savedData.activePageId ?? restoredPages[0].id);
     setCanvasW(savedData.canvasW);
@@ -207,101 +154,73 @@ export const useStudioPersist = ({
     trackEvent("studio", "autosave_restored");
   }, [savedData, setPages, setActivePageId, setCanvasW, setCanvasH, setImage]);
 
-  const handleManualSave = useCallback(async () => {
-    if (instanceId) {
-      const thumbH = Math.round(THUMB_W * canvasH / canvasW);
-      const effectiveTpl = { ...template, width: canvasW, height: canvasH };
-      let thumbnail: string | null = null;
-      try {
-        thumbnail = await renderStudioToDataUrl(effectiveTpl, background, layers, image, THUMB_W, thumbH);
-      } catch {
-        thumbnail = null;
-      }
-      const doc: StudioDoc = {
-        version: 1,
-        kind: "studio",
-        name: workNameRef.current,
-        createdAt: workCreatedAtRef.current,
-        background,
-        canvasW,
-        canvasH,
-        image,
-        layers,
-        pages: toStudioPages(pages),
-        activePageId,
-      };
-      await writeInstance({
-        id: instanceId,
-        kind: "studio",
-        title: workNameRef.current || "Studio",
-        doc,
-        thumbnail,
-      });
-      setActiveTabTitle(workNameRef.current || "Studio");
-      markClean();
-      trackPosthog("studio_manual_save_completed");
-      trackEvent("studio", "manual_save");
-      return;
-    }
-    if (workId) {
-      const thumbH = Math.round(THUMB_W * canvasH / canvasW);
-      const effectiveTpl = { ...template, width: canvasW, height: canvasH };
-      let thumbnail: string | null = null;
-      try {
-        thumbnail = await renderStudioToDataUrl(effectiveTpl, background, layers, image, THUMB_W, thumbH);
-      } catch {
-        thumbnail = null;
-      }
-      const work: Work = {
-        id: workId,
-        name: workNameRef.current,
-        thumbnail,
-        background, canvasW, canvasH, layers,
-        pages: pages.map((page) => ({
-          id: page.id,
-          name: page.name,
-          layers: page.layers,
-          background: page.background,
-          backgroundVar: page.backgroundVar,
-          x: page.x,
-          y: page.y,
-          width: page.width,
-          height: page.height,
-          image: page.image ?? null,
-          clip: page.clip,
-          animation: page.animation,
-        })),
-        image,
-        createdAt: workCreatedAtRef.current,
-        updatedAt: Date.now(),
-      };
-      await saveWork(work);
-      await loadWorks();
-    } else {
-      await saveStudioAutosave({
-        layers, background, canvasW, canvasH, image,
-        pages: pages.map((page) => ({
-          id: page.id,
-          name: page.name,
-          layers: page.layers,
-          background: page.background,
-          backgroundVar: page.backgroundVar,
-          x: page.x,
-          y: page.y,
-          width: page.width,
-          height: page.height,
-          image: page.image ?? null,
-          clip: page.clip,
-          animation: page.animation,
-        })),
-        activePageId,
-        timestamp: Date.now(),
-      });
-    }
+  const saveCurrentWork = useCallback(async (id: string): Promise<CloudSyncOutcome> => {
+    const cover = pages[0];
+    const coverTemplate = { ...template, width: cover?.width ?? canvasW, height: cover?.height ?? canvasH };
+    const work: Work = {
+      id,
+      name: workNameRef.current,
+      thumbnail: cover
+        ? await renderThumbnail(coverTemplate, cover.background, cover.layers, cover.image ?? null)
+        : await renderThumbnail(coverTemplate, background, layers, image),
+      background, canvasW, canvasH, layers,
+      pages: serializePages(pages),
+      image,
+      createdAt: workCreatedAtRef.current,
+      updatedAt: Date.now(),
+    };
+    const outcome = await saveWork(work);
+    await loadWorks();
+    return outcome;
+  }, [template, layers, background, pages, canvasW, canvasH, image, workNameRef, workCreatedAtRef]);
+
+  const saveDraftAutosave = useCallback(async (): Promise<CloudSyncOutcome> => {
+    await saveStudioAutosave({
+      layers, background, canvasW, canvasH, image,
+      pages: serializePages(pages),
+      activePageId,
+      timestamp: Date.now(),
+    });
+    return "not_synced";
+  }, [layers, background, canvasW, canvasH, image, pages, activePageId]);
+
+  // Desktop: the instance's `.bitgrain` file is the store of record, so a written
+  // file is a complete save (there is no cloud copy to fall behind).
+  const saveInstance = useCallback(async (id: string): Promise<CloudSyncOutcome> => {
+    const cover = pages[0];
+    const coverTemplate = { ...template, width: cover?.width ?? canvasW, height: cover?.height ?? canvasH };
+    const thumbnail = cover
+      ? await renderThumbnail(coverTemplate, cover.background, cover.layers, cover.image ?? null)
+      : await renderThumbnail(coverTemplate, background, layers, image);
+    const doc: StudioDoc = {
+      version: 1,
+      kind: "studio",
+      name: workNameRef.current,
+      createdAt: workCreatedAtRef.current,
+      background,
+      canvasW,
+      canvasH,
+      image,
+      layers,
+      pages: serializePages(pages),
+      activePageId,
+    };
+    await writeInstance({ id, kind: "studio", title: workNameRef.current || "Studio", doc, thumbnail });
+    setActiveTabTitle(workNameRef.current || "Studio");
+    return "saved";
+  }, [template, layers, background, pages, activePageId, canvasW, canvasH, image, workNameRef, workCreatedAtRef]);
+
+  const handleManualSave = useCallback(async (): Promise<CloudSyncOutcome> => {
+    if (!canPersistWork()) return "failed";
+    const outcome = instanceId
+      ? await saveInstance(instanceId)
+      : workId ? await saveCurrentWork(workId) : await saveDraftAutosave();
+    if (outcome === "failed") return outcome;
     markClean();
     trackPosthog("studio_manual_save_completed");
     trackEvent("studio", "manual_save");
-  }, [workId, instanceId, template, layers, background, pages, activePageId, canvasW, canvasH, image, workNameRef, workCreatedAtRef]);
+    return outcome;
+  }, [workId, instanceId, saveInstance, saveCurrentWork, saveDraftAutosave]);
 
-  return { showRestoreToast, setShowRestoreToast, savedData, handleManualSave, handleRestore };
+  return { showRestoreToast, setShowRestoreToast, savedData, handleManualSave, handleRestore, retryLoad };
 };

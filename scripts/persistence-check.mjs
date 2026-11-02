@@ -112,7 +112,7 @@ async function run() {
     `document.body.innerText.toLowerCase().includes("drop an image")`,
   );
   if (!empty) failures.push("new darkroom tab was not blank (auto-restored a document)");
-  await clickText(window, "try a sample");
+  await clickAttr(window, 'button[aria-label^="Try the sample photo"]');
   await wait(2800);
 
   window.webContents.send("app:menu", "save");

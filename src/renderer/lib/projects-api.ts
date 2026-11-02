@@ -1,4 +1,5 @@
-import { callApi } from "./api-client";
+import { callApi, callApiWithOutcome } from "./api-client";
+import type { ApiOutcome } from "./api/api-outcome";
 
 export interface ServerProject {
   id: string;
@@ -46,13 +47,24 @@ export async function updateProject(id: string, project: Partial<ServerProject>)
   return result?.ok ?? false;
 }
 
-export async function deleteProject(id: string): Promise<boolean> {
-  const result = await callApi<{ ok: boolean }>(`/api/projects/${id}`, {
-    method: "DELETE",
+export async function putProject(
+  id: string,
+  project: Partial<ServerProject>,
+): Promise<ApiOutcome<{ ok: boolean }>> {
+  return await callApiWithOutcome<{ ok: boolean }>(`/api/projects/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(project),
   });
-  return result?.ok ?? false;
 }
 
-export async function getProject(id: string): Promise<ServerProject | null> {
-  return await callApi<ServerProject>(`/api/projects/${id}`);
+export async function deleteProject(id: string): Promise<boolean> {
+  const outcome = await callApiWithOutcome<{ ok: boolean }>(`/api/projects/${id}`, {
+    method: "DELETE",
+  });
+  return outcome.kind === "not_found" || (outcome.kind === "ok" && outcome.data.ok);
+}
+
+export async function fetchProject(id: string): Promise<ApiOutcome<ServerProject>> {
+  return await callApiWithOutcome<ServerProject>(`/api/projects/${id}`);
 }

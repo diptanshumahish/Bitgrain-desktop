@@ -21,3 +21,19 @@ export function dismissPrintHint(): void {
     printHintSeenSignal.value = true;
   }
 }
+
+const HOME_TOUR_KEY = "imgi_tutorial_home_done";
+
+const readHomeTourDone = (): boolean => {
+  try {
+    return localStorage.getItem(HOME_TOUR_KEY) !== null;
+  } catch {
+    return true;
+  }
+};
+
+export const homeTourDoneSignal = signal<boolean>(readHomeTourDone());
+
+export function markHomeTourDone(): void {
+  homeTourDoneSignal.value = true;
+}

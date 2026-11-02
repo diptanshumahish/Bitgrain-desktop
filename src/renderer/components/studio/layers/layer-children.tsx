@@ -97,7 +97,7 @@ export const LayerChildren: React.FC<LayerChildrenProps> = ({
       };
 
       if (child.type === "image") {
-        return <ImageLayerView key={child.id} layer={view as ImageLayer} image={image} selected={selectedIds.includes(child.id)} {...commonProps} />;
+        return <ImageLayerView key={child.id} layer={view as ImageLayer} image={image} selected={selectedIds.includes(child.id)} onCropChange={(crop) => onLayerUpdate(child.id, { crop })} {...commonProps} />;
       }
       if (child.type === "text") {
         return (
@@ -125,7 +125,7 @@ export const LayerChildren: React.FC<LayerChildrenProps> = ({
         );
       }
       if (child.type === "upload") {
-        return <UploadLayerView key={child.id} layer={view as typeof child} selected={selectedIds.includes(child.id)} {...commonProps} />;
+        return <UploadLayerView key={child.id} layer={view as typeof child} selected={selectedIds.includes(child.id)} onCropChange={(crop) => onLayerUpdate(child.id, { crop })} {...commonProps} />;
       }
       if (child.type === "vector") {
         return (

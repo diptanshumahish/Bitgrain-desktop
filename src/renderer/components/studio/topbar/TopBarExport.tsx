@@ -4,19 +4,17 @@ import { useSignalValue } from "../../../lib/signal";
 import { exportingSignal } from "./use-export-handlers";
 
 interface TopBarExportProps {
-  anchorRef: React.RefObject<HTMLDivElement | null>;
   onExport: () => void;
   onOpenPopup: () => void;
 }
 
 export const TopBarExport: React.FC<TopBarExportProps> = ({
-  anchorRef, onExport, onOpenPopup,
+  onExport, onOpenPopup,
 }) => {
   const isExporting = useSignalValue(exportingSignal);
 
   return (
     <div
-      ref={anchorRef}
       data-tutorial="studio-export"
       className="flex items-center h-8 bg-[var(--s-text)] rounded-lg overflow-hidden relative"
     >

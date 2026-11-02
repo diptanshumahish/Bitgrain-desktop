@@ -1,11 +1,12 @@
-import { encodeAndDownload, downloadSvg, triggerBlobDownload } from "../../engine/Exporter";
+import { encodeAndDownload } from "../../engine/Exporter";
 import { trackEvent as trackPosthog } from "../../lib/analytics";
 import { trackEvent } from "../../lib/tracker";
 import { emitModal } from "../../lib/event-bus";
-import { renderForExport, renderAsciiSvgForExport } from "../../components/output-preview/export-render";
+import { renderForExport } from "../../components/output-preview/export-render";
 import { imageMetaSignal } from "../../store/image-store";
-import { printFinishSignal, printFinishStrengthSignal, modesSignal } from "../../store/transform-store";
-import { buildPrintFinishOptions } from "../../engine/print-finish";
+import { resolvePrintFinish } from "./export/resolve-print-finish";
+import { currentExportBaseName } from "./export/export-filename";
+
 import {
   reportProgress,
   finishProgress,
@@ -16,6 +17,7 @@ import type { ExportFormat } from "../../engine/export/export-types";
 import type { TransformMode, DitherMethod } from "../../engine/types";
 import { getPlanLimits } from "../../config/plan-limits";
 import { registerWatermarkedExport, shouldPromptUpgrade } from "../../utils/upgrade-prompt";
+import { editorPaperColor } from "./preview/editor-colors";
 
 export interface RasterDownloadArgs {
   format: ExportFormat;
@@ -39,7 +41,6 @@ export interface RasterDownloadArgs {
 
 const CANVAS_ID = "transformation-output-canvas";
 const EXPORT_HARD_MAX = 16384;
-const PAPER_COLOR = "#fdf6e3";
 const POST_EXPORT_PROMPT_DELAY_MS = 700;
 
 const promptUpgradeAfterExport = (requestedLongEdge: number, deliveredLongEdge: number): void => {
@@ -72,7 +73,7 @@ const getNativeExportScale = (canvasWidth: number, userScale: number): number =>
   return (meta.width / canvasWidth) * userScale;
 };
 
-const resolveExportCanvas = async (
+export const resolveExportCanvas = async (
   bgColor: string,
   renderScale: number,
 ): Promise<ResolvedExport> => {
@@ -88,7 +89,7 @@ const resolveExportCanvas = async (
   }
 };
 
-const resolveRenderScale = (plan: string, userScale: number): number => {
+export const resolveRenderScale = (plan: string, userScale: number): number => {
   const previewCanvas = document.getElementById(CANVAS_ID) as HTMLCanvasElement | null;
   if (!previewCanvas) return getNativeExportScale(0, userScale);
   const nativeScale = getNativeExportScale(previewCanvas.width, userScale);
@@ -125,14 +126,12 @@ export const triggerRasterDownload = async (args: RasterDownloadArgs): Promise<v
   reportProgress("scaling", INDETERMINATE);
   const encodeScale = resolved.renderedAtScale > 0 ? renderScale / resolved.renderedAtScale : renderScale;
 
-  const printFinish = printFinishSignal.value && !resolved.isFallback && modes[modes.length - 1] !== "ascii" && modes[modes.length - 1] !== "braille"
-    ? buildPrintFinishOptions(printFinishStrengthSignal.value, bgColor)
-    : null;
+  const printFinish = resolvePrintFinish(resolved.isFallback, bgColor);
 
   try {
     await encodeAndDownload(
       canvas,
-      { format, scale: encodeScale, transparent, bgColor, watermark, quality, printFinish },
+      { format, scale: encodeScale, transparent, bgColor, watermark, quality, printFinish, filenameBase: currentExportBaseName() },
       (value) => reportProgress("encoding", value),
     );
     finishProgress();
@@ -164,70 +163,6 @@ export const triggerRasterDownload = async (args: RasterDownloadArgs): Promise<v
   }
 };
 
-interface SvgDownloadArgs {
-  transparent: boolean;
-  bgColor: string;
-  isSample: boolean;
-  modes: TransformMode[];
-  ditherMethod: DitherMethod;
-  plan: string;
-}
-
-export const triggerSvgDownload = async ({
-  transparent, bgColor, isSample, modes, ditherMethod, plan,
-}: SvgDownloadArgs): Promise<void> => {
-  if (!isSample && !getPlanLimits(plan).allowSvgExport) {
-    trackPosthog("payment_modal_opened", { trigger: "svg_export" });
-    trackEvent("payment", "modal_opened", { details: { trigger: "svg_export" } });
-    emitModal({ type: "studio-payment" });
-    return;
-  }
-
-  reportProgress("rendering", INDETERMINATE);
-
-  // ASCII exports as real <text> glyphs (tiny, crisp, pen-plotter ready) rather than a pixel trace.
-  if (modes[modes.length - 1] === "ascii") {
-    const svg = await renderAsciiSvgForExport(transparent);
-    reportProgress("encoding", INDETERMINATE);
-    triggerBlobDownload(
-      new Blob([svg], { type: "image/svg+xml" }),
-      `bitgrain-ascii-${Date.now()}.svg`,
-    );
-    finishProgress();
-    trackPosthog("export_downloaded", {
-      format: "svg",
-      transform_modes: modes,
-      is_sample: isSample,
-      transparent,
-      dither_method: ditherMethod,
-    });
-    trackEvent("home", "export_svg", { details: { is_sample: isSample, transparent } });
-    return;
-  }
-
-  const resolved = await resolveExportCanvas(bgColor, 1);
-  const canvas = resolved.canvas;
-  if (!canvas) {
-    setExportProgress(null);
-    return;
-  }
-
-  reportProgress("encoding", INDETERMINATE);
-  downloadSvg(canvas, `bitgrain-${modes.join("+")}-${Date.now()}`, transparent, bgColor);
-  finishProgress();
-
-  trackPosthog("export_downloaded", {
-    format: "svg",
-    transform_modes: modes,
-    is_sample: isSample,
-    transparent,
-    dither_method: ditherMethod,
-  });
-  trackEvent("home", "export_svg", {
-    details: { is_sample: isSample, transparent },
-  });
-};
-
 export interface PlatformDownloadArgs {
   presetId: string;
   format: ExportFormat;
@@ -244,7 +179,7 @@ export const triggerPlatformDownload = async (args: PlatformDownloadArgs): Promi
   const { presetId, format, targetWidth, targetHeight, transparent, plan } = args;
   const limits = getPlanLimits(plan);
   const watermark = limits.watermark;
-  const bgColor = PAPER_COLOR;
+  const bgColor = editorPaperColor();
 
   let width = targetWidth;
   let height = targetHeight;
@@ -265,15 +200,16 @@ export const triggerPlatformDownload = async (args: PlatformDownloadArgs): Promi
     return;
   }
 
-  const printFinish = printFinishSignal.value && !resolved.isFallback && modesSignal.value[modesSignal.value.length - 1] !== "ascii" && modesSignal.value[modesSignal.value.length - 1] !== "braille"
-    ? buildPrintFinishOptions(printFinishStrengthSignal.value, bgColor)
-    : null;
+  const printFinish = resolvePrintFinish(resolved.isFallback, bgColor);
 
   reportProgress("scaling", INDETERMINATE);
   try {
     await encodeAndDownload(
       canvas,
-      { format, scale: 1, transparent, bgColor, watermark, quality: 1, printFinish, target: { width, height } },
+      {
+        format, scale: 1, transparent, bgColor, watermark, quality: 1, printFinish,
+        target: { width, height }, filenameBase: `${currentExportBaseName()}-${presetId}`,
+      },
       (value) => reportProgress("encoding", value),
     );
     finishProgress();

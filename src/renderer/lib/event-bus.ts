@@ -19,6 +19,7 @@ export type ModalEvent =
       onAddPage: (dataUrl: string, width: number, height: number) => void;
     }
   | { type: "free-access"; plan?: "pro" }
+  | { type: "upgrade-prompt"; feature: import("../components/modals/upgrade-prompt/upgrade-copy").UpgradeFeature }
   | {
       type: "post-export-upgrade";
       requestedLongEdge: number;
@@ -28,13 +29,20 @@ export type ModalEvent =
   | { type: "crop" }
   | { type: "riso-export" }
   | { type: "animate" }
-  | { type: "selective-effect" }
+  | {
+      type: "mask-area";
+      source: string;
+      area: import("../modules/grading/mask-ui/area-modal/use-area-editor").AreaValue;
+      onApply: (area: import("../modules/grading/mask-ui/area-modal/use-area-editor").AreaValue) => void;
+    }
   | { type: "login"; reason?: "templates" | "export" | "presets" | "purchase" | "studio" | "generic" }
   | { type: "batch" }
   | { type: "changelog" }
+  | { type: "keyboard-shortcuts" }
+  | { type: "new-design"; onCreate: (size: { width: number; height: number }) => void }
   | {
       type: "heic-status";
-      status: "converting" | "done";
+      status: "converting" | "done" | "failed";
       format?: "heic" | "raw" | "tiff";
     }
   | {
@@ -46,6 +54,7 @@ export type ModalEvent =
       confirmLabel?: string;
       cancelLabel?: string;
       danger?: boolean;
+      safeDefault?: boolean;
     }
   | {
       type: "prompt";
@@ -85,6 +94,7 @@ export type ModalEvent =
 
 import type { UploadLayer, ImageFilters, BlendMode, GroupLayer } from "../data/studioTypes";
 import type { ImageDimensions } from "../utils/image-utils";
+import type { LucideIcon } from "lucide-react";
 
 type ImageFit = "cover" | "contain" | "fill";
 
@@ -142,7 +152,10 @@ export function onPopover(handler: (event: PopoverEvent | null) => void): () => 
 
 export interface ContextMenuAction {
   label: string;
-  icon?: string;
+  icon?: LucideIcon;
+  shortcut?: string;
+  dividerBefore?: boolean;
+  danger?: boolean;
   onClick: () => void;
   disabled?: boolean;
 }

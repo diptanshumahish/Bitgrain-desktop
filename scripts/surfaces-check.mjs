@@ -83,12 +83,12 @@ async function run() {
   await mkdir(OUTPUT_DIR, { recursive: true });
 
   const atHome = await window.webContents.executeJavaScript(
-    `document.body.innerText.includes("New Darkroom")`,
+    `document.body.innerText.includes("What are we making?")`,
   );
   if (!atHome) failures.push("did not land on the home dashboard");
 
-  // open Studio from the dashboard
-  const openedStudio = await clickText(window, "button", "Multi-page, multi-layer");
+  // open Studio from the dashboard's "Blank design" quick action
+  const openedStudio = await clickText(window, "a", "Blank design");
   if (!openedStudio) failures.push("could not click the Studio tool card");
   await wait(3500);
 

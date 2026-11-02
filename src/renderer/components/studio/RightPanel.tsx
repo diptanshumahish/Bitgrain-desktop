@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React from 'react'
+import type { DistributeAxis } from "../../pages/studio-page/layer-order";
 import type { Layer, TextLayer, ImageLayer, ShapeLayer, UploadLayer, GroupLayer, FrameLayer, VectorLayer, InkLayer, AdjustmentLayer, CustomFontEntry, TemplatePage } from '../../data/studioTypes'
 import { TextProperties } from './panels/TextProperties'
 import { ImageProperties } from './panels/ImageProperties'
@@ -14,49 +15,15 @@ import { InkProperties } from './panels/InkProperties'
 import { FrameProperties } from './panels/FrameProperties'
 import { MultiSelectProperties } from './panels/MultiSelectProperties'
 import { PageCanvasPanel } from './panels/PageCanvasPanel'
-import { ChevronDown, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { RightPanelHeader, LayerOptionsMenu } from './panels/right-panel-header'
 import { toggleRightPanel } from '../../store/studio-panels-store'
+import { trackEvent } from '../../lib/tracker'
 
-const ShortcutHint: React.FC<{ keys: string; label: string }> = ({ keys, label }) => (
-  <div className="flex items-center justify-between gap-3 text-[11px] text-[var(--s-text-muted)]">
-    <span className="truncate">{label}</span>
-    <kbd className="px-1.5 py-0.5 rounded-md bg-[var(--s-bg-input)] text-[10px] [font-variant-numeric:tabular-nums] text-[var(--s-text-subtle)] shrink-0 border border-[var(--s-border)]">
-      {keys}
-    </kbd>
-  </div>
-);
-
-const ShortcutsPanel: React.FC = () => {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="px-4 pt-2 pb-5 select-none">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between bg-transparent border-none cursor-pointer p-0 text-left"
-      >
-        <span className="text-[11px] text-[var(--s-text-subtle)] font-medium">Quick keys</span>
-        <ChevronDown
-          size={13}
-          strokeWidth={1.75}
-          className={`text-[var(--s-text-subtle)] transition-transform duration-150 ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      {open && (
-        <div className="flex flex-col gap-2.5 mt-3">
-          <ShortcutHint keys="V" label="Select tool" />
-          <ShortcutHint keys="H" label="Pan canvas" />
-          <ShortcutHint keys="P" label="Pen tool" />
-          <ShortcutHint keys="⌘ Z" label="Undo" />
-          <ShortcutHint keys="⌘ D" label="Duplicate" />
-          <ShortcutHint keys="⌘ G" label="Group selection" />
-          <ShortcutHint keys="⌫" label="Delete selection" />
-        </div>
-      )}
-    </div>
-  );
-};
+const collapseRightPanel = (): void => {
+  trackEvent('studio', 'panel_collapsed', { details: { side: 'right' } })
+  toggleRightPanel()
+}
 
 interface RightPanelProps {
   selectedIds: string[]
@@ -67,6 +34,7 @@ interface RightPanelProps {
   onMatchPageToLayer?: (id: string) => void
   onAlign: (alignment: string) => void
   onScatterCollage?: () => void
+  onDistribute?: (axis: DistributeAxis) => void
   onGroup: () => void
   onUngroup: () => void
   customFonts?: CustomFontEntry[]
@@ -80,23 +48,26 @@ interface RightPanelProps {
   selectedFramePage?: TemplatePage | null
   selectedFramePageIndex?: number
   totalPages?: number
+  totalLayers?: number
   onRenamePage?: (id: string, name: string) => void
   onPageBackgroundChange?: (id: string, color: string) => void
   onPageResize?: (id: string, width: number, height: number) => void
   onPageMove?: (id: string, x: number, y: number) => void
   onDeletePage?: (id: string) => void
   pageImage?: string | null
+  pageLayers?: Layer[]
+  pageBackground?: string
 }
 
 export const RightPanel: React.FC<RightPanelProps> = ({
   selectedIds, selectedLayer, editingId, onPageBackgroundBind,
   onUpdateLayer, onMatchPageToLayer,
-  onAlign, onScatterCollage, onGroup, onUngroup,
+  onAlign, onScatterCollage, onDistribute, onGroup, onUngroup,
   customFonts = [], onFontUpload, onImageUpload,
   onDeleteLayer, onMoveLayerUp, onMoveLayerDown, onFlipLayerH, onFlipLayerV,
-  selectedFramePage, selectedFramePageIndex = 0, totalPages = 1,
+  selectedFramePage, selectedFramePageIndex = 0, totalPages = 1, totalLayers = 0,
   onRenamePage, onPageBackgroundChange, onPageResize, onPageMove, onDeletePage,
-  pageImage,
+  pageImage, pageLayers, pageBackground,
 }) => {
   const commonHeaderProps = (l: Layer) => ({
     onMoveUp: () => onMoveLayerUp?.(l.id),
@@ -149,7 +120,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       data-tutorial="studio-properties"
       className="w-[252px] min-w-[252px] flex flex-col bg-[var(--s-bg-panel)] border-l border-[var(--s-border)] font-editorial h-full overflow-hidden animate-panel-in-right"
     >
-      <RightPanelHeader title={headerTitle} onCollapse={toggleRightPanel} action={headerAction} />
+      <RightPanelHeader title={headerTitle} onCollapse={collapseRightPanel} action={headerAction} />
 
       <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col">
       {selectedIds.length > 1 && (
@@ -158,6 +129,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           onAlign={onAlign}
           onGroup={onGroup}
           onScatterCollage={onScatterCollage}
+          onDistribute={onDistribute}
         />
       )}
 
@@ -189,8 +161,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
       {selectedIds.length === 0 && !selectedFramePage && (
         <>
-          <PageCanvasPanel />
-          <ShortcutsPanel />
+          <PageCanvasPanel pageCount={totalPages} layerCount={totalLayers} />
         </>
       )}
 
@@ -280,6 +251,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             onChange={(updates) => onUpdateLayer(selectedLayer.id, updates)}
             onAlign={onAlign}
             onUngroup={onUngroup}
+            pageLayers={pageLayers}
+            pageBackground={pageBackground}
           />
         </>
       )}
