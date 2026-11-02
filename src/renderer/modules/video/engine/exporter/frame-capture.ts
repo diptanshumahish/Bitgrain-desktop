@@ -1,5 +1,5 @@
 import type { VideoClip, VideoProject } from "../../types";
-import type { TransformMode } from "../../../../engine/types";
+import type { TransformMode } from "@bitgrain/engine/core/types";
 import type { EffectParams } from "../../types";
 import {
   activeFrameAt,

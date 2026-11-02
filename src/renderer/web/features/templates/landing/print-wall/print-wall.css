@@ -1,0 +1,74 @@
+.print-wall {
+  --print-wall-cycle: 150s;
+}
+
+.print-wall-track {
+  animation: print-wall-slide var(--print-wall-cycle) linear infinite;
+}
+
+.print-wall-track-reverse {
+  animation-direction: reverse;
+}
+
+.print-wall:hover .print-wall-track,
+.print-wall[data-offscreen] .print-wall-track {
+  animation-play-state: paused;
+}
+
+.print-crop {
+  position: absolute;
+  inset: -14px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left 0 top 14px / 9px 1px no-repeat,
+    linear-gradient(currentColor, currentColor) left 14px top 0 / 1px 9px no-repeat,
+    linear-gradient(currentColor, currentColor) right 0 top 14px / 9px 1px no-repeat,
+    linear-gradient(currentColor, currentColor) right 14px top 0 / 1px 9px no-repeat,
+    linear-gradient(currentColor, currentColor) left 0 bottom 14px / 9px 1px no-repeat,
+    linear-gradient(currentColor, currentColor) left 14px bottom 0 / 1px 9px no-repeat,
+    linear-gradient(currentColor, currentColor) right 0 bottom 14px / 9px 1px no-repeat,
+    linear-gradient(currentColor, currentColor) right 14px bottom 0 / 1px 9px no-repeat;
+}
+
+.print-tape {
+  clip-path: polygon(0 12%, 5% 0, 50% 6%, 95% 0, 100% 14%, 97% 50%, 100% 88%, 94% 100%, 50% 94%, 6% 100%, 0 86%, 3% 50%);
+}
+
+.print-ruler-ticks {
+  background-image:
+    linear-gradient(to right, currentColor 1px, transparent 1px),
+    linear-gradient(to right, currentColor 1px, transparent 1px),
+    linear-gradient(to right, currentColor 1px, transparent 1px);
+  background-size:
+    8px 5px,
+    40px 9px,
+    80px 14px;
+  background-repeat: repeat-x;
+}
+
+.print-ruler-ticks-top {
+  background-position: 0 0;
+}
+
+.print-ruler-ticks-bottom {
+  background-position: 0 100%;
+}
+
+@keyframes print-wall-slide {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: -50% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .print-wall-track {
+    animation: none;
+  }
+
+  .print-wall-track-reverse {
+    translate: -3% 0;
+  }
+}

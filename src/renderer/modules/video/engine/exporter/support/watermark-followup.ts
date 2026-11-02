@@ -1,6 +1,6 @@
-import { emitModal } from "../../../../../lib/event-bus";
-import { registerWatermarkedExport, shouldPromptUpgrade } from "../../../../../utils/upgrade-prompt";
-import { trackEvent } from "../../../../../lib/tracker";
+import { emitPlatformModal } from "@bitgrain/platform/modals/platform-modal-events";
+import { registerWatermarkedExport, shouldPromptUpgrade } from "@bitgrain/platform/plans/upgrade-prompt";
+import { trackEvent } from "@bitgrain/platform/tracker";
 
 interface WatermarkFollowup {
   plan: string;
@@ -14,7 +14,7 @@ export function announceWatermarkedExport(followup: WatermarkFollowup): void {
     details: { context: "video_export", format: followup.format, plan: followup.plan },
   });
   if (!shouldPromptUpgrade(registerWatermarkedExport())) return;
-  emitModal({
+  emitPlatformModal({
     type: "post-export-upgrade",
     requestedLongEdge: followup.requestedLongEdge,
     deliveredLongEdge: followup.deliveredLongEdge,

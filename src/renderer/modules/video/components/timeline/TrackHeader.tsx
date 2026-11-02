@@ -19,7 +19,7 @@ import {
   moveTrack,
   removeTrack,
 } from "../../utils/timeline-actions";
-import { Tooltip } from "../../../../components/studio/ui/Tooltip";
+import { Tooltip } from "@bitgrain/ui/controls/panel/Tooltip";
 import { ContextMenu } from "./ContextMenu";
 
 interface TrackHeaderProps {

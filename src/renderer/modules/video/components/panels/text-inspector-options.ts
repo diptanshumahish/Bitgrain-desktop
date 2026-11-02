@@ -1,5 +1,5 @@
 import type { TextAnimation } from "../../types";
-import { FONT_FAMILIES } from "../../../../data/studioTypes";
+import { FONT_FAMILIES } from "@bitgrain/studio-core/model/studio-types";
 
 export const ANIMATION_OPTIONS: { id: TextAnimation; label: string }[] = [
   { id: "none", label: "None" },

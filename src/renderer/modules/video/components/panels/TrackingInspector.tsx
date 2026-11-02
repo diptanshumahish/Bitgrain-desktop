@@ -5,10 +5,10 @@ import {
   selectedClipIdSignal,
   updateProject,
 } from "../../store/project-store";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import type { TrackingClip, TrackingTrack } from "../../types";
 import { ClipTimingControls } from "./ClipTimingControls";
-import { ColorPicker } from "../../../../components/studio/ui/ColorPicker";
+import { ColorPicker } from "@bitgrain/studio/ui/ColorPicker";
 
 const SEED_RANGE = 100000;
 

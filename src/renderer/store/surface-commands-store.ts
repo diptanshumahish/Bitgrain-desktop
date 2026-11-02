@@ -1,4 +1,4 @@
-import { signal } from "../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 import { activeTabIdSignal } from "./document-tabs-store";
 
 // Commands the native OS menu (and context menu) can invoke on the active

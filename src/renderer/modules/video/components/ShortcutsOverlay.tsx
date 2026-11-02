@@ -1,6 +1,6 @@
 import React from "react";
 import { X } from "lucide-react";
-import { useSignalValue } from "../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { shortcutsOpenSignal } from "../store/shortcuts-store";
 
 interface Shortcut {

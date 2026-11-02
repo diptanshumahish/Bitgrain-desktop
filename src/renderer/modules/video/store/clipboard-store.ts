@@ -1,4 +1,4 @@
-import { signal } from "../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 import type { BaseClip, TrackKind } from "../types";
 
 export interface ClipboardEntry {

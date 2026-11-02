@@ -1,6 +1,6 @@
 import { desktopPlatform } from "./desktop-platform";
 import { TitleBarTabs } from "./TitleBarTabs";
-import { useSignalValue } from "../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { titlebarActionsSignal } from "../store/titlebar-actions-store";
 import { activeTabIdSignal } from "../store/document-tabs-store";
 import { AccountChip } from "./account/AccountChip";
@@ -29,7 +29,7 @@ export function TitleBar() {
     <header
       data-app-titlebar
       data-os={desktopPlatform}
-      className="flex h-10 shrink-0 items-center bg-[var(--s-bg-canvas)]"
+      className="flex h-10 shrink-0 items-center"
     >
       <div className={`${DRAG} h-full shrink-0 ${leadingWidth}`} />
       <div className={`${DRAG} flex h-full shrink-0 items-center pr-2.5`}>

@@ -1,15 +1,15 @@
-import { signal } from "../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 import {
   getAllProjects,
   persistProject,
   removeProject,
 } from "../utils/project-persist";
 import type { VideoProject, VideoProjectMeta } from "../types";
-import { userSignal } from "../../../hooks/useAuth";
-import * as ProjectsAPI from "../../../lib/projects-api";
-import type { ServerProject, ServerProjectSummary } from "../../../lib/projects-api";
-import { resolveAssetUrl } from "../../../lib/api-client";
-import { syncToCloud } from "../../../lib/save-to-cloud";
+import { userSignal } from "@bitgrain/platform/auth/use-auth";
+import * as ProjectsAPI from "@bitgrain/platform/projects/projects-api";
+import type { ServerProject, ServerProjectSummary } from "@bitgrain/platform/projects/projects-api";
+import { resolveAssetUrl } from "@bitgrain/api/api-client";
+import { syncToCloud } from "@bitgrain/platform/projects/save-to-cloud";
 
 const DEFAULT_VIDEO_DIMENSION = 1;
 const DEFAULT_VIDEO_FPS = 30;

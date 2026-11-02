@@ -21,7 +21,7 @@ import {
 } from "./audio-encode";
 import { awaitQueue, reportExportFailure, safeFileName } from "./exporter-utils";
 import { clampVideoDimensions, planRequiresVideoWatermark } from "./export-plan-gate";
-import { drawWatermarkPill, preloadWatermarkLogo } from "../../../../engine/watermark";
+import { drawWatermarkTag, preloadWatermarkLogo } from "@bitgrain/engine/watermark/watermark";
 
 const PIPELINE_OVERHEAD = 1;
 
@@ -215,7 +215,7 @@ export async function startWebCodecsExport(plan: string): Promise<void> {
 
       if (watermark) {
         const wmCtx = renderCanvas.getContext("2d");
-        if (wmCtx) drawWatermarkPill(wmCtx, width, height, watermarkLogo);
+        if (wmCtx) drawWatermarkTag(wmCtx, width, height, watermarkLogo);
       }
 
       const timestampMicros = Math.round((next.index * 1_000_000) / fps);

@@ -15,13 +15,13 @@ Run `npm run verify` before every commit. A red render-check means output determ
 
 ## The hard rule
 
-**Never edit pixel math in `src/renderer/engine/`.** It is ported verbatim from the web repo and it is the brand promise: same input, same settings, same output, forever. If engine code looks like it needs changing, the surrounding shell is wrong instead.
+**Never edit pixel math in `src/renderer/packages/engine/`** (the web repo's `packages/engine`, imported as `@bitgrain/engine/...`). It is ported verbatim from the web repo and it is the brand promise: same input, same settings, same output, forever. If engine code looks like it needs changing, the surrounding shell is wrong instead.
 
-Exactly one deviation exists (`triggerBlobDownload` in `Exporter.ts`, routed to the native save dialog). It is documented in `PORTED.md`. Any further deviation must be recorded there too, or it will be silently lost on the next re-sync from the web repo.
+As of the 2026-11-02 re-sync the engine has no deviations: native saves are handled outside it by `shell/native-downloads.ts`. Any future deviation must be recorded in `PORTED.md`, or it will be silently lost on the next re-sync from the web repo.
 
 ## The video module is forked
 
-`src/renderer/modules/video/` is desktop-owned as of 2026-07-26 and is no longer kept in sync with the web repo. Change it freely; do not "restore parity" with the web version. Its architecture (worker-pool preview, render cache, background pre-render, tool modes) is documented in `PORTED.md`. The engine rule below still binds it: nothing in `modules/video` may edit pixel math in `src/renderer/engine/`.
+`src/renderer/modules/video/` is desktop-owned as of 2026-07-26 and is no longer kept in sync with the web repo. Change it freely; do not "restore parity" with the web version. Its architecture (worker-pool preview, render cache, background pre-render, tool modes) is documented in `PORTED.md`. The engine rule below still binds it: nothing in `modules/video` may edit pixel math in `src/renderer/packages/engine/`. The fork also serves the `@bitgrain/video/*` alias.
 
 ## Porting files from the web repo
 
@@ -29,7 +29,7 @@ Exactly one deviation exists (`triggerBlobDownload` in `Exporter.ts`, routed to 
 2. Compute the transitive import closure first, then copy exactly that set. Do not bulk-copy `src`.
 3. Strip on arrival: analytics calls, payment loaders and modals, SEO and Helmet, service worker code, PWA config, marketing pages.
 4. Record every ported subtree and every deviation in `PORTED.md`.
-5. Relative imports survive the move because the web repo defines no path aliases and `src/x` maps to `src/renderer/x`. Preserve that depth.
+5. The web repo is a monorepo (since 2026-10-28). `packages/<p>/src/x` maps to `src/renderer/packages/<p>/x` and keeps its `@bitgrain/<p>/x` imports (alias in `tsconfig.web.json` and `electron.vite.config.ts`); `apps/web/src/x` maps to `src/renderer/web/x`. Never rewrite imports when copying. `scripts/sync/port.py` copies a closure, `scripts/sync/prune.py` drops what nothing reaches.
 
 ## Process boundaries
 

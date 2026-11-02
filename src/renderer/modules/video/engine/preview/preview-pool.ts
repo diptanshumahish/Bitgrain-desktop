@@ -1,6 +1,6 @@
 import FrameProcessorWorker from "../exporter/frame-processor.worker?worker";
-import { signal } from "../../../../lib/signal";
-import type { TransformMode } from "../../../../engine/types";
+import { signal } from "@bitgrain/core/signal";
+import type { TransformMode } from "@bitgrain/engine/core/types";
 import type { EffectParams } from "../../types";
 
 // The preview's own worker pool, separate from the exporter's. The exporter wants

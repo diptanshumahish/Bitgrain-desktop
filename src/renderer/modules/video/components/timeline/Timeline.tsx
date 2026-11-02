@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { ZoomIn, ZoomOut, Magnet } from "lucide-react";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { currentProjectSignal, updateProject } from "../../store/project-store";
 import { dropLockedFromSelection } from "../../utils/clip-edits/drop-locked-selection";
 import {
@@ -27,7 +27,7 @@ import { AddTrackButton } from "./AddTrackButton";
 import { nextZoomLevel, pxToTime } from "./timeline-math";
 import { useMarquee } from "./use-marquee";
 import { projectMarkers, projectRangeIn, projectRangeOut } from "../../store/markers-store";
-import { trackEvent } from "../../../../lib/tracker";
+import { trackEvent } from "@bitgrain/platform/tracker";
 
 const ZOOM_IN_FACTOR = 1.25;
 const ZOOM_OUT_FACTOR = 0.8;

@@ -1,4 +1,4 @@
-import { signal } from "../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 
 // The timeline's active tool. The web build had exactly one behaviour, select,
 // with trim handles on the clip edges. On desktop the same drag means different

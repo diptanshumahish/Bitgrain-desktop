@@ -1,4 +1,4 @@
-import { signal } from "../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 
 // Whether the account/settings panel is open. Toggled from the title-bar account
 // chip and the native "Settings…" menu item.

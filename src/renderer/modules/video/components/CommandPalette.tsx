@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
-import { useSignalValue } from "../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { commandPaletteOpenSignal, closeCommandPalette } from "../store/command-store";
 import { useVideoCommands, type VideoCommand } from "../hooks/useVideoCommands";
 

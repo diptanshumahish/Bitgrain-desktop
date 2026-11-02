@@ -20,7 +20,7 @@ import {
 } from "../../utils/clip-mutations";
 import { snapTimeDetailed, timeToPx } from "./timeline-math";
 import type { SnapResult } from "./timeline-math";
-import { useSignalValue, setSignal } from "../../../../lib/signal";
+import { useSignalValue, setSignal } from "@bitgrain/core/signal";
 import {
   addSpatialKeyframeAtPlayhead,
   clearKeyframesAtPlayhead,

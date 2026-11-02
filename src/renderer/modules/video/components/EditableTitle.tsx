@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useSignalValue } from "../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { currentProjectSignal, updateProject } from "../store/project-store";
 
 export const EditableTitle: React.FC = () => {

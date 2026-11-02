@@ -1,5 +1,5 @@
-import { Studio } from "../../pages/Studio";
-import type { TemplateDef } from "../../data/studioTypes";
+import { Studio } from "@bitgrain/studio/editor/Studio";
+import type { TemplateDef } from "@bitgrain/studio-core/model/studio-types";
 
 export function StudioSurface({
   instanceId,

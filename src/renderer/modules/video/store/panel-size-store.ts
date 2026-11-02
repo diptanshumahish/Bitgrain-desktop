@@ -1,4 +1,4 @@
-import { signal } from "../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 
 const STORAGE_KEY = "video-editor-panel-sizes";
 

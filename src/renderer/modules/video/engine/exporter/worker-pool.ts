@@ -1,5 +1,5 @@
 import FrameProcessorWorker from "./frame-processor.worker?worker";
-import type { TransformMode } from "../../../../engine/types";
+import type { TransformMode } from "@bitgrain/engine/core/types";
 import type { EffectParams } from "../../types";
 
 const MIN_WORKERS = 2;

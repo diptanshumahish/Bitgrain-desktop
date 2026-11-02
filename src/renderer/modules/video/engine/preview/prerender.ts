@@ -1,4 +1,4 @@
-import { signal } from "../../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 import { currentProjectSignal } from "../../store/project-store";
 import { isPlayingSignal } from "../../store/playback-store";
 import { currentTimeSignal } from "../../store/timeline-store";

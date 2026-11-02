@@ -1,4 +1,4 @@
-import { signal } from "../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 
 // A one-line transient message for edits triggered from the keyboard or the
 // palette, where there is no menu to report back into. Deliberately minimal: a

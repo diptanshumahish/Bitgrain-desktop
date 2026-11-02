@@ -6,14 +6,14 @@ import {
   selectedClipIdSignal,
   updateProject,
 } from "../../store/project-store";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import type { TextAlign, TextAnimation, TextClip, TextTrack } from "../../types";
 import { ensureFontLoaded } from "../../utils/font-loader";
 import {
   adminFontOptionsSignal,
   availableWeightsForFamily,
   ensureAdminFontsLoaded,
-} from "../../../../lib/admin-fonts";
+} from "@bitgrain/studio-core/fonts/admin-fonts";
 import { setClipFade } from "../../utils/clip-mutations";
 import { maxFadeForClip } from "../../utils/clip-fade";
 import { CLIP_FADE_STEP_SECONDS } from "../../constants";

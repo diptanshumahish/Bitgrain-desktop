@@ -1,7 +1,7 @@
 import React from "react";
 import { LayoutTemplate } from "lucide-react";
-import { Tooltip } from "../../../../components/studio/ui/Tooltip";
-import { emitPopover } from "../../../../lib/event-bus";
+import { Tooltip } from "@bitgrain/ui/controls/panel/Tooltip";
+import { emitPopover } from "@bitgrain/ui/overlays/popover-events";
 import { TemplatesGallery } from "./TemplatesGallery";
 
 export const TemplatesPicker: React.FC = () => {

@@ -1,6 +1,6 @@
 import React from "react";
 import { Cpu, Database, Gauge, Activity } from "lucide-react";
-import { useSignalValue } from "../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { currentProjectSignal } from "../store/project-store";
 import { activeToolSignal, TIMELINE_TOOLS } from "../store/tool-store";
 import { isPlayingSignal, playbackRateSignal } from "../store/playback-store";

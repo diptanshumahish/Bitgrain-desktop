@@ -1,6 +1,6 @@
 import React from "react";
 import type { EffectApplication, EffectParams } from "../../../types";
-import type { TransformMode } from "../../../../../engine/types";
+import type { TransformMode } from "@bitgrain/engine/core/types";
 import { HalftoneParams } from "./halftone-params";
 import { PopartParams } from "./popart-params";
 import { AsciiParams, BrailleParams } from "./ascii-params";

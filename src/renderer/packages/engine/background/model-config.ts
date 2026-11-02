@@ -1,0 +1,10 @@
+const MODEL_REVISION = "7112208dbac3a3642496c8d54e2f0f9bb3dc1dc8";
+export const MODEL_URL = `https://huggingface.co/BritishWerewolf/U-2-Netp/resolve/${MODEL_REVISION}/onnx/model.onnx`;
+export const MODEL_BYTES = 4_574_861;
+export const MODEL_SHA256 = "309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8";
+export const MODEL_CACHE_NAME = "bitgrain-background-model-v1";
+export const MODEL_INPUT_SIZE = 320;
+export const MODEL_MEAN: readonly number[] = [0.485, 0.456, 0.406];
+export const MODEL_STD: readonly number[] = [0.229, 0.224, 0.225];
+export const MASK_FLOOR = 0.03;
+export const MASK_CEILING = 0.97;

@@ -2,7 +2,7 @@ import React from "react";
 import { RESOLUTION_PRESETS } from "../../constants";
 import { updateProjectSettings } from "../../utils/edit-ops";
 import { scaleToShortEdge, type FrameSize } from "../../engine/exporter/support/scale-to-short-edge";
-import { emitModal } from "../../../../lib/event-bus";
+import { emitPlatformModal } from "@bitgrain/platform/modals/platform-modal-events";
 import { SelectMenu, type SelectOption } from "../ui/SelectMenu";
 
 interface ExportResolutionFieldProps {
@@ -39,7 +39,7 @@ export const ExportResolutionField: React.FC<ExportResolutionFieldProps> = ({
   const handleChange = (next: string): void => {
     const shortEdge = Number(next);
     if (shortEdge > maxShortEdge) {
-      emitModal({ type: "studio-payment" });
+      emitPlatformModal({ type: "studio-payment" });
       return;
     }
     updateProjectSettings(scaleToShortEdge(frame, shortEdge));

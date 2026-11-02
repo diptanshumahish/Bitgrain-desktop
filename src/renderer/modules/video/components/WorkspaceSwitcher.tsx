@@ -1,6 +1,6 @@
 import React from "react";
 import { PanelLeft, PanelRight, PanelBottom } from "lucide-react";
-import { useSignalValue } from "../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import {
   WORKSPACES,
   activeWorkspaceSignal,

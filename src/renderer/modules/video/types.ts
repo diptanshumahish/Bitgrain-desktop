@@ -1,4 +1,4 @@
-import type { TransformMode as EngineTransformMode, DitherMethod, Palette, AsciiTone } from "../../engine/types";
+import type { TransformMode as EngineTransformMode, DitherMethod, Palette, AsciiTone } from "@bitgrain/engine/core/types";
 
 export type TrackKind = "video" | "audio" | "text" | "effect" | "image" | "tracking";
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { MousePointer2 } from "lucide-react";
-import { useSignalValue } from "../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import {
   selectedClipIdSignal,
   currentProjectSignal,

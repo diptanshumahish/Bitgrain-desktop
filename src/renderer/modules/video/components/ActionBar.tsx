@@ -16,7 +16,7 @@ import {
   showProjectInfo,
   addEffectClipAtPlayhead,
 } from "../utils/timeline-actions";
-import { Tooltip } from "../../../components/studio/ui/Tooltip";
+import { Tooltip } from "@bitgrain/ui/controls/panel/Tooltip";
 
 interface ActionButtonProps {
   icon: React.ReactNode;

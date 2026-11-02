@@ -2,10 +2,9 @@ import type { ReactNode } from "react";
 import { Aperture, Layers, Film, LayoutGrid, LayoutTemplate, Trash2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { signal, useSignalValue } from "../lib/signal";
+import { signal, useSignalValue } from "@bitgrain/core/signal";
 import {
   documentTabsSignal,
-  activeTabIdSignal,
   openStudioTemplate,
   switchTab,
   openInstanceTab,
@@ -17,15 +16,18 @@ import {
   openProject,
   removeProject,
 } from "../store/projects-store";
-import { userSignal } from "../hooks/useAuth";
-import { HUB_DESTINATIONS } from "../pages/landing-page/HubDestinations";
-import { HubAsciiBackground } from "../components/hub/HubAsciiBackground";
-import { HubGreeting } from "../components/hub/HubGreeting";
-import { HubQuickActions } from "../components/hub/quick-actions/HubQuickActions";
-import { HubTemplatesSection } from "../components/hub/HubTemplatesSection";
-import { useWelcomeAutostart } from "../components/onboarding/welcome/hooks/use-welcome-autostart";
-import { STUDIO_STARTERS, starterToTemplate, type StudioStarter } from "../data/templates/studio-starters";
+import { userSignal } from "@bitgrain/platform/auth/use-auth";
+import { HUB_DESTINATIONS } from "../web/features/landing/HubDestinations";
+import { APP_BAND_CLASS, APP_MARINE_SCOPE_CLASS } from "@bitgrain/ui/theme/app-marine-classes";
+import { HubGreeting } from "../web/features/hub/HubGreeting";
+import { HubQuickActions } from "../web/features/hub/quick-actions/HubQuickActions";
+import { HubTemplatesSection } from "../web/features/hub/HubTemplatesSection";
+import { useWelcomeAutostart } from "../web/features/onboarding/welcome/hooks/use-welcome-autostart";
+import { STUDIO_STARTERS, starterToTemplate, type StudioStarter } from "./home/studio-starters";
 import type { InstanceRecord } from "../../shared/bridge";
+
+// Apparel lives on its own site and is not part of the desktop app yet.
+const DESKTOP_HUB_DESTINATIONS = HUB_DESTINATIONS.filter((destination) => destination.key !== "apparel");
 
 // Opens a library instance in the right surface: darkroom loads its embedded
 // image, studio/video open a tab bound to the instance id and load their file.
@@ -268,10 +270,14 @@ export function HomeDashboard() {
   const firstName = user?.name?.trim().split(" ")[0] || "creator";
 
   return (
-    <div className="relative pb-16">
-      <div className="relative z-10 mx-auto max-w-6xl px-8 pt-10">
-        <HubGreeting firstName={firstName} />
-        <HubQuickActions destinations={HUB_DESTINATIONS} />
+    <div className={`${APP_MARINE_SCOPE_CLASS} relative min-h-full pb-16`}>
+      <header className={APP_BAND_CLASS}>
+        <div className="mx-auto w-full max-w-6xl px-8 pb-12 pt-10">
+          <HubGreeting firstName={firstName} />
+          <HubQuickActions destinations={DESKTOP_HUB_DESTINATIONS} />
+        </div>
+      </header>
+      <div className="relative z-10 mx-auto max-w-6xl px-8">
 
         {(filter !== "all" || works.length > 0) && (
           <section className="mt-12">
@@ -324,14 +330,3 @@ export function HomeDashboard() {
 // transformed layer (which becomes its containing block) to stay behind the home
 // content instead of the whole window, and mounts only while home is visible so
 // its animation frame loop stops on other tabs.
-export function HomeBackdrop() {
-  const tabs = useSignalValue(documentTabsSignal);
-  const activeId = useSignalValue(activeTabIdSignal);
-  const homeActive = tabs.find((tab) => tab.id === activeId)?.kind === "home";
-  if (!homeActive) return null;
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden [transform:translateZ(0)]">
-      <HubAsciiBackground />
-    </div>
-  );
-}

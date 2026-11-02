@@ -1,5 +1,5 @@
 import React from "react";
-import type { DitherMethod } from "../../../../../engine/types";
+import type { DitherMethod } from "@bitgrain/engine/core/types";
 import type { EffectParams } from "../../../types";
 import { SliderRow } from "./SliderRow";
 import { Toggle } from "./filter-shared";

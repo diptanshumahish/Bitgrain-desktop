@@ -1,0 +1,4 @@
+export const SNAPSHOT_ZOOM_THRESHOLD = 0.25;
+export const SNAPSHOT_PREFETCH_ZOOM = 0.5;
+export const SNAPSHOT_MAX_EDGE_PX = 720;
+export const SNAPSHOT_IDLE_TIMEOUT_MS = 400;

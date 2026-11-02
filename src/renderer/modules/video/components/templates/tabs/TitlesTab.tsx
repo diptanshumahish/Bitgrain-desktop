@@ -1,7 +1,7 @@
 import React from "react";
 import { TEXT_TEMPLATES } from "../../../templates/text-templates";
 import { applyTextTemplate } from "../../../templates/apply-text";
-import { emitPopover } from "../../../../../lib/event-bus";
+import { emitPopover } from "@bitgrain/ui/overlays/popover-events";
 import { TextAnimationPreview } from "../previews/TextAnimationPreview";
 
 function yAnchorFromY(y: number): "top" | "middle" | "bottom" {

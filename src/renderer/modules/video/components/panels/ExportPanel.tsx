@@ -1,5 +1,5 @@
 import React from "react";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import {
   exportPanelOpenSignal,
   exportProgressSignal,
@@ -32,10 +32,10 @@ import { Modal } from "../Modal";
 import { ExportSummaryCard } from "./ExportSummaryCard";
 import { ExportProgressBar } from "./ExportProgressBar";
 import { SelectMenu } from "../ui/SelectMenu";
-import { trackEvent } from "../../../../lib/tracker";
-import { useUser } from "../../../../hooks/useUser";
+import { trackEvent } from "@bitgrain/platform/tracker";
+import { useUser } from "@bitgrain/platform/account/use-user";
 import { maxVideoShortEdge } from "../../engine/exporter/export-plan-gate";
-import { emitModal } from "../../../../lib/event-bus";
+import { emitPlatformModal } from "@bitgrain/platform/modals/platform-modal-events";
 
 const BITRATE_PRESETS: { id: BitratePreset; label: string }[] = [
   { id: "low", label: "Low" },
@@ -199,7 +199,7 @@ export const ExportPanel: React.FC = () => {
               onChange={(next) => {
                 const [width, height] = next.split("x").map(Number);
                 if (Math.min(width, height) > maxShortEdge) {
-                  emitModal({ type: "studio-payment" });
+                  emitPlatformModal({ type: "studio-payment" });
                   return;
                 }
                 updateProjectSettings({ width, height });

@@ -1,5 +1,5 @@
 import type { TransformMode, EffectParams } from "../../../types";
-import { ASCII_DETAILED } from "../../../../../engine/plugins/ascii";
+import { ASCII_DETAILED } from "@bitgrain/engine/plugins/ascii";
 
 export interface ModeOption {
   id: TransformMode;

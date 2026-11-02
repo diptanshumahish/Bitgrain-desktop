@@ -1,4 +1,4 @@
-import { signal } from "../../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 
 // Bumped whenever an asset the compositor draws with finishes loading: an
 // overlay image decoding, a font becoming available to the text painter.

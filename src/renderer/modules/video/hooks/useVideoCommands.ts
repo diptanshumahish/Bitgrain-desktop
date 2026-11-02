@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useSignalValue } from "../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import { currentProjectSignal, selectedClipIdSignal } from "../store/project-store";
 import { currentTimeSignal, toggleSnap } from "../store/timeline-store";
 import {

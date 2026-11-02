@@ -5,7 +5,7 @@ import {
   selectedClipIdSignal,
   updateProject,
 } from "../../store/project-store";
-import { useSignalValue } from "../../../../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import type {
   VideoClip,
   VideoTrack,

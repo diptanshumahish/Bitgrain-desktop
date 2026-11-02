@@ -1,4 +1,4 @@
-import { signal } from "../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 import { DEFAULT_TIMELINE_PIXELS_PER_SECOND } from "../constants";
 
 export const currentTimeSignal = signal(0);

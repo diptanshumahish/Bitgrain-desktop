@@ -1,4 +1,4 @@
-import { signal } from "../../../../lib/signal";
+import { signal } from "@bitgrain/core/signal";
 import type { BitratePreset } from "./codec-config";
 
 export type ExportStatus = "idle" | "preparing" | "recording" | "finalizing" | "done" | "error" | "cancelled";

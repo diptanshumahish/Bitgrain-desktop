@@ -1,7 +1,7 @@
 import React from "react";
 import type { EffectParams } from "../../../types";
 import { SliderRow } from "./SliderRow";
-import { ColorPicker } from "../../../../../components/studio/ui/ColorPicker";
+import { ColorPicker } from "@bitgrain/studio/ui/ColorPicker";
 
 interface SimpleParamsProps {
   params: EffectParams;

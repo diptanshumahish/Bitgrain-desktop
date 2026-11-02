@@ -1,7 +1,7 @@
 import React from "react";
 import { PROJECT_TEMPLATES } from "../../../templates/project-templates";
 import { applyProjectTemplate } from "../../../templates/apply-project";
-import { emitPopover } from "../../../../../lib/event-bus";
+import { emitPopover } from "@bitgrain/ui/overlays/popover-events";
 import { ProjectPreview } from "../previews/ProjectPreview";
 
 export const ProjectTab: React.FC = () => (

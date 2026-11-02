@@ -1,12 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { useSignalValue } from "../lib/signal";
+import { useSignalValue } from "@bitgrain/core/signal";
 import {
   userSignal,
   authLoadingSignal,
   authBypassSignal,
   loadUser,
   completeGoogleAuth,
-} from "../hooks/useAuth";
+} from "@bitgrain/platform/auth/use-auth";
 import { SignInScreen } from "./auth/SignInScreen";
 import { isDesktop } from "./desktop-platform";
 

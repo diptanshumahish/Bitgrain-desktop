@@ -138,9 +138,21 @@ async function run() {
     console.log("  on disk:", JSON.stringify({ ...r, thumbnail: r?.thumbnail ? "<data-url>" : null }));
   }
 
-  // Autosave: change the document (toggle colorize), wait past the interval, and
-  // confirm the saved instance updated on disk without a manual save.
-  await clickText(window, "colorize");
+  // Autosave: change the document (open the inspector's Tone tab and nudge the
+  // Brightness slider with the keyboard, as a user would), wait past
+  // the interval, and confirm the saved instance updated on disk without a save.
+  await clickAttr(window, 'button[role="tab"]:nth-child(2)');
+  await wait(400);
+  await window.webContents.executeJavaScript(`(() => {
+    const slider = document.querySelector('[aria-label="Inspector"] [role="slider"]');
+    if (!slider) return false;
+    slider.focus();
+    for (let i = 0; i < 3; i += 1) {
+      slider.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    }
+    slider.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight", bubbles: true }));
+    return true;
+  })()`);
   await wait(6000);
   const afterAuto = JSON.parse(await readFile(indexPath, "utf8"))[0];
   if (!afterAuto || afterAuto.updatedAt <= savedAt) {

@@ -1,4 +1,4 @@
-import type { TransformMode } from "../../../../engine/types";
+import type { TransformMode } from "@bitgrain/engine/core/types";
 
 const PIXEL_MODES: ReadonlySet<TransformMode> = new Set<TransformMode>([
   "dither",

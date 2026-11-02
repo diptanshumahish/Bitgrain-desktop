@@ -2,9 +2,9 @@ import React from "react";
 import { Plus } from "lucide-react";
 import type { TrackKind } from "../../types";
 import { addNewTrack } from "../../utils/timeline-actions";
-import { trackEvent } from "../../../../lib/tracker";
-import { Tooltip } from "../../../../components/studio/ui/Tooltip";
-import { emitPopover } from "../../../../lib/event-bus";
+import { trackEvent } from "@bitgrain/platform/tracker";
+import { Tooltip } from "@bitgrain/ui/controls/panel/Tooltip";
+import { emitPopover } from "@bitgrain/ui/overlays/popover-events";
 
 const TRACK_KINDS: { kind: TrackKind; label: string; glyph: string }[] = [
   { kind: "video", label: "Video track", glyph: "▓▒" },

@@ -2,8 +2,87 @@
 
 Every file under `src/renderer/` that came from the web repo is tracked here. When the web repo changes, this file tells you what needs re-syncing and what was deliberately altered.
 
-Source repo: `/Users/diptanshumahish/personal/imgi`
-Source commit: `2294da118740e90f6d851dc0d9e290dc3cf276ac` (2026-07-23), re-synced to `765ed1f` **plus the web repo's uncommitted working tree** on 2026-10-01 (see below). Diff future re-syncs against that working tree, not against `765ed1f` alone.
+Source repo: `/Users/diptanshumahish/personal/imgi` (a Bun monorepo since 2026-10-28)
+Source commit: **`e29fa06` (2026-11-01)**, see "Web re-sync, 2026-11-02" below. Diff the next re-sync against `e29fa06`. Everything under "M1 slice" and the older re-sync sections describes the pre-monorepo layout (`src/renderer/{engine,components,pages,lib,...}`), which no longer exists; it is kept as history.
+---
+
+## Web re-sync, 2026-11-02 (monorepo)
+
+Brought the desktop from web `f4d1bef` to `e29fa06` (174 commits). The web repo became a Bun monorepo in that range (`apps/*`, `packages/*`, imports as `@bitgrain/<package>/<path>`), so this was a re-layout, not a file refresh.
+
+### Layout
+
+| Web | Desktop | Notes |
+|---|---|---|
+| `packages/{core,api,ui,engine,studio-core,platform,darkroom,studio}/src/x` | `src/renderer/packages/<p>/x` | verbatim except the deviations below |
+| `packages/video` | not vendored | `@bitgrain/video/*` resolves to the desktop fork `src/renderer/modules/video/` |
+| `apps/web/src/x` | `src/renderer/web/x` | only the closure: hub pieces, templates pages, onboarding welcome, announcements, mosh/export toasts |
+| `packages/ui/src/styles` | `src/renderer/packages/ui/styles` | `index.css` imports `global.css` and adds the desktop tail |
+| `apps/{menus,albums,qr}` | not yet ported | see Known gaps |
+| `apps/apparel`, `apps/admin`, `apps/mcp`, `apps/figma-plugin` | not ported | apparel deferred on request; the rest are not desktop features |
+
+Alias: `tsconfig.web.json` `paths` plus `electron.vite.config.ts` `resolve.alias` (same regex as web's `packages/config/vite-alias.ts`, with video first). `tsconfig.web.json` is no longer `composite` (the vendored lazy-modal modules fail declaration-emit checks the web never runs); `npm run typecheck` checks node and web separately, and `src/renderer/tsconfig.json` keeps editors typed.
+
+Method: `scripts/sync/port.py <web entries>` (run from the web repo root) copies the transitive closure of the given web files into this layout, following `@bitgrain/*`, relative, dynamic and `new URL(..., import.meta.url)` imports and stopping at `@bitgrain/video`. `scripts/sync/prune.py` deletes vendored `.ts/.tsx` that nothing reachable from `main.tsx` and the two harnesses imports. Desktop-owned files had their imports rewritten once to the new paths. 3,092 renderer modules are reachable after pruning.
+
+Engine: `src/renderer/packages/engine/` is **byte-identical to web**, with no deviations (the old `Exporter.ts` hunk is retired, see below). render-check goldens did not move, and parallel-check still proves the banded export byte-identical.
+
+New deps (exact, as web): `onnxruntime-web@1.30.0`, `pptxgenjs@4.0.1`, dev `tw-animate-css@1.4.0`. `posthog-js` and `react-helmet-async` are still not bundled. New public assets: `fonts/bitgrain-sans/*` (UI typeface), `audio/welcome-guitar.mp3`, hub preview art in `art/`, and `models/u2netp.onnx` (the background-removal model, SHA-256 `309c8469...ddd8`, identical to the engine's pin).
+
+### What this brings in
+
+Darkroom: the redesigned editor (top bar, right-hand Look/Tone/Colour inspector, export dialog with platform presets), the style engine (cell styles, post effects, looks, style browser), background removal, MP4/GIF and sound-reactive loops, metadata cleaner, recipe panel, new watermark. Studio: snapping/rulers/guides, masks, rich paint, text on a path, auto layout, components, off-page shelf, new colour picker, command palette (with doc links), presenter view, version history, find and replace, slide sorter, speaker notes, PDF/PPTX export and preflight, design-kit auto-apply and brand check, resize kits, element library portal. Shared: the "app marine" design language, self-hosted UI fonts, new dialogs and toasts, announcements.
+
+### Desktop deviations in vendored files (re-apply on every re-sync)
+
+- `packages/platform/analytics/posthog-provider.ts`: returns `null` (deviation 2).
+- `packages/platform/auth/use-auth.ts`: `deleteAccount` removed (deviation 9); `authBypassSignal` and `completeGoogleAuth` added (desktop sign-in and harness bypass).
+- `packages/api/api-client.ts`: bearer-token fallback in `buildHeaders`.
+- `packages/darkroom/preview/export-render.ts`: banded multi-core export branch (deviation 7), imports `src/renderer/parallel/*`.
+- `packages/darkroom/editor/Home.tsx`: root `h-dvh md:h-screen` to `h-full` (deviation 6).
+- `packages/darkroom/editor/topbar/EditorTopBar.tsx`: `UserAvatar` removed (the account lives in the title bar).
+- `packages/darkroom/editor/use-home-init.ts`: only editor shortcuts (no session restore, unload guard, tour).
+- `packages/darkroom/editor/hints/PrintFinishHint.tsx`: null component (portals into `document.body`).
+- `packages/darkroom/editor/empty-state/EmptyStateHeading.tsx`: "rendered in your browser" subline removed.
+- `packages/darkroom/background-removal/worker/background-removal.worker.ts`: one side-effect import of `shell/workers/bundled-background-model.ts`, which answers the pinned Hugging Face model URL from `public/models/u2netp.onnx`.
+- `packages/studio/editor/Studio.tsx`: `instanceId`/`tabId`/`initialTemplate` props, initial template precedence, `instanceId` passed to saving, root `h-full`, renders `shell/studio/DesktopStudioCommands`.
+- `packages/studio/editor/studio-root/use-studio-saving.ts`: desktop instance persistence (`shell/studio/use-desktop-studio-instance.ts`, the `.bitgrain` file is the store of record) replaces the cloud works save when `instanceId` is set.
+- `packages/studio/workspace/TopBar.tsx`: no `useExportShortcut` (Cmd+E is the native accelerator), no `TopBarAccount`.
+- `packages/studio/fonts/load-studio-fonts.ts`: bundled `/fonts/google/*.css` instead of the CDN (world sheet not bundled).
+- `packages/studio-core/render/text/text-helpers.ts`: literal newlines as hard breaks, `em` relative to the parent size (web still has both bugs).
+- `packages/studio/canvas/snap/use-drag-snap.ts`: haptic tick when a new alignment engages.
+- `packages/ui/controls/panel/slider-track/slider-track.tsx`: slider haptics (deviation 8, moved to the shared slider).
+- `packages/studio/hooks/useStudioExport.ts`, `panels/ExportPopup.tsx`, `panels/export-popup/QualitySlider.tsx`, `panels/export-state.ts`: PNG "Quality (colour reduction)" and the 1x default scale.
+- `web/features/seo/PageSeo.tsx`: renders nothing (no Helmet).
+- `web/app/shell/transitions/route-preloaders.ts`: no-op.
+- `web/features/templates/Templates.tsx`: `ProductHuntBadge` removed; `scrollToContent` scrolls the home container.
+- `web/features/templates/preview/use-start-template.ts`: fetches the full template and opens a studio tab.
+- `packages/darkroom/types/external-modules.d.ts`: copied (web keeps it outside the import graph).
+
+### Retired deviations
+
+- **1, `Exporter.ts` native save**: web's exporter now calls `@bitgrain/core/files/download-blob`. `shell/native-downloads.ts` (desktop-owned) intercepts every `<a download>` with a blob or data URL, from programmatic `click()` and real clicks, and sends the bytes to `window.bitgrain.saveFile`. That covers the engine, studio PNG/PDF/PPTX/.btg, darkroom loops and batch, and the video fork, with no vendored edits.
+- **10, `toggleDither`** and the desktop rail `DarkroomPanel`, `DesktopExportButton`, `ArtisticEffectsPopover`: superseded by web's redesigned darkroom inspector and export dialog. The shell left rail (`LeftRailPortal`, `left-rail-store`, `shell/panel`) is gone; each editor brings its own panels.
+- **Desktop `ModalPortal`**: replaced by web's per-package hosts mounted once in `App.tsx` (`DialogHost`, `DarkroomModalHost`, `StudioModalHost`) plus `shell/overlays/DesktopPlatformModalHost.tsx`, which renders only the changelog and opens bitgrain.app/pricing externally for checkout and upgrade events. `add-image` now uses web's `AddImageModal`.
+- `AddFrameMenu` and `addPageWithSize`: web's left panel has its own add-page and size presets.
+
+### Desktop shell changes
+
+- `SurfaceRouter`: darkroom and studio panes are wrapped in React `<Activity>`. A hidden tab keeps its state and DOM but its effects are torn down, so window shortcuts, paste and drop intake, studio command events and per-editor portals only act in the visible tab. Video keeps its own `active` gating.
+- `shell/surfaces/DarkroomSurface.tsx`: web `Home` plus native Save/Export (Export opens web's export dialog).
+- `main.tsx`: `installNativeDownloads`, `installNativeDragBlock`, `configureShell({ hubPath: "/desktop/hub" })`, `registerDocLinks(shell/home/desktop-doc-links.ts)` (regenerate the list from `apps/web/src/features/docs/articles`).
+- `HomeSurface`: `/templates/:category/:templateId` added; an editor's "back to hub", "back to projects" or new project activates the home tab.
+- `HomeDashboard`: app-marine band styling (the ASCII backdrop was removed on web); apparel filtered out of the hub actions.
+- `src/main/window.ts`: `window.open` of an app-relative path (doc links) opens the same path on bitgrain.app; only http(s) URLs reach `shell.openExternal`.
+- Studio keeps web's in-window File/Edit/View/Help menus this time. They now carry about 15 features the native menu lacks (find and replace, rulers and guides, versions, slide sorter, notes, comments, metadata cleaner, command search). The native menu still drives Save, Export, .btg, Present, Resize, Mockup and Plugins via `DesktopStudioCommands`.
+- Check scripts: `surfaces-check` uses "Make a design"; `persistence-check` edits through the inspector's Tone slider.
+
+### Known gaps
+
+- **Video editor features from web are not ported.** Web's video package was largely rewritten (asset panel, timeline toolbar, magnet ripple track, on-canvas manipulation, effect layers with a project migration, per-effect keyframes, mix, Moments, export pre-flight, effect-preview worker pool). The desktop fork compiles and runs against the new packages (watermark now uses `drawWatermarkTag`, overlays use `@bitgrain/ui` and `@bitgrain/platform` channels) but has none of those features. Port them feature by feature, keeping the fork's own preview pool and render cache.
+- **Product apps (menus "Platebill", albums "Bindwell", QR) are not ported.** Each defines its own Tailwind `@theme` with token names that collide with each other and with the main app (`--color-paper` etc.), so they cannot share the main renderer document. Plan: one renderer entry per app (own HTML and CSS, HashRouter or MemoryRouter), shown in a tab through a same-origin frame so the session and `window.parent.bitgrain` are shared. Per-product checkout must open in the browser.
+- Studio's `panels/text/opentype/font-axes.ts` fetches the Google CSS to read variable axes; CSP blocks it and it falls back quietly.
+- `npm run lint` fails because ESLint is not installed in this repo (predates this sync).
 
 ---
 
@@ -301,7 +380,7 @@ Worth fixing upstream in the web repo too.
 
 ## Re-sync procedure
 
-1. `cd /Users/diptanshumahish/personal/imgi && git log --oneline <recorded-sha>..HEAD -- src/engine`
-2. For each changed file in the ported set, copy it over.
-3. Reapply deviation 1 if `Exporter.ts` was among them.
+1. `cd /Users/diptanshumahish/personal/imgi && git log --oneline <recorded-sha>..HEAD -- packages apps/web/src`
+2. Re-copy changed vendored files (`port.py --force` on them), then re-apply every hunk listed under "Desktop deviations in vendored files" in the latest re-sync section.
+3. Run `scripts/sync/port.py` on any new web entry points the desktop mounts, then `scripts/sync/prune.py`.
 4. `npm run verify` in this repo. If checksums in `test/output/checksums.json` move, the engine changed. Confirm that was intended.
